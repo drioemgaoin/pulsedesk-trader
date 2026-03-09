@@ -172,6 +172,15 @@ services:
       PORT: "3000"
       CORS_ORIGIN: "http://localhost:5173"
       OTEL_SERVICE_NAME: api-gateway
+      JWT_SECRET: local-dev-secret-change-in-prod
+      JWT_EXPIRY_SECONDS: "3600"
+      DEMO_USERNAME: trader
+      DEMO_PASSWORD: pulsedesk
+      GATEWAY_RATE_LIMIT_MAX: "100"
+      GATEWAY_RATE_LIMIT_WINDOW_MS: "60000"
+      ORDER_SERVICE_URL: http://order-service:3012
+      PORTFOLIO_SERVICE_URL: http://portfolio-service:3015
+      MARKET_DATA_SERVICE_URL: http://market-data-service:3011
     ports:
       - "3000:3000"
     <<: [*svc-depends, *svc-shutdown]

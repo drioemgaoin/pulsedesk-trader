@@ -1,3 +1,4 @@
+import { Public } from '../../infrastructure/auth/public.decorator';
 import { Controller, Get, HttpCode, Res } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { FastifyReply } from 'fastify';
@@ -8,6 +9,7 @@ import { ReadinessService } from '../../app.readiness';
 export class ReadyController {
   constructor(private readonly readiness: ReadinessService) {}
 
+  @Public()
   @Get('ready')
   @HttpCode(200)
   @ApiOperation({ summary: 'Readiness probe — 503 during drain' })

@@ -6,6 +6,7 @@ import {
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import fastifyHelmet from '@fastify/helmet';
 import fastifyCors from '@fastify/cors';
+import { ValidationPipe } from '@nestjs/common';
 import { Logger } from 'nestjs-pino';
 import { randomUUID } from 'crypto';
 import { AppModule } from './app.module';
@@ -22,6 +23,8 @@ async function bootstrap(): Promise<void> {
   );
 
   app.useLogger(app.get(Logger));
+
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }));
 
   // Security
   await app.register(fastifyHelmet);
