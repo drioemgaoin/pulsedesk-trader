@@ -8,12 +8,17 @@
     "node": ">=20 <21",
     "pnpm": ">=10 <11"
   },
+  "pnpm": {
+    "overrides": {
+      "fastify": "^5.8.1"
+    }
+  },
   "scripts": {
     "dev": "pnpm --filter @pulsedesk/trader-ui dev",
     "dev:ui": "pnpm --filter @pulsedesk/trader-ui dev",
-    "build": "pnpm -r --filter './apps/*' build",
-    "lint": "pnpm -r --filter './apps/*' lint",
-    "test": "pnpm -r --filter './apps/*' test",
+    "build": "pnpm -r --filter './packages/*' --filter './apps/*' --filter './services/*' build",
+    "lint": "pnpm -r --filter './packages/*' --filter './apps/*' --filter './services/*' lint",
+    "test": "pnpm -r --filter './packages/*' --filter './apps/*' --filter './services/*' test",
     "preview": "pnpm --filter @pulsedesk/trader-ui preview"
   }
 }

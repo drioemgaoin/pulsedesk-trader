@@ -18,4 +18,4 @@ Monorepo workspace for the PulseDesk microservices platform and trader workstati
 
 ## Local platform goal
 
-The repository is configured for local development via Docker Compose and is planned to scale to multi-server deployment profiles as defined in `.claude/agile/PROJECT.md`.
+The repository is configured for local development via Docker Compose and is planned to scale to multi-server deployment profiles.
