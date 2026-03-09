@@ -1,0 +1,19 @@
+{
+  "name": "pulsedesk-platform",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@10.17.1",
+  "engines": {
+    "node": ">=20 <21",
+    "pnpm": ">=10 <11"
+  },
+  "scripts": {
+    "dev": "pnpm --filter @pulsedesk/trader-ui dev",
+    "dev:ui": "pnpm --filter @pulsedesk/trader-ui dev",
+    "build": "pnpm -r --filter './apps/*' build",
+    "lint": "pnpm -r --filter './apps/*' lint",
+    "test": "pnpm -r --filter './apps/*' test",
+    "preview": "pnpm --filter @pulsedesk/trader-ui preview"
+  }
+}
