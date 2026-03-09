@@ -1,0 +1,12 @@
+**/node_modules
+**/dist
+**/.pnpm-store
+**/*.log
+**/coverage
+.git
+.env
+.env.*
+!.env.example
+.claude
+docs/claude
+CLAUDE.md

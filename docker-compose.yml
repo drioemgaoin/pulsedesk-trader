@@ -1,0 +1,304 @@
+name: pulsedesk
+
+# ── Reusable fragments ───────────────────────────────────────────────────────
+x-infra-env: &infra-env
+  KAFKA_BROKER: kafka:9092
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: "5432"
+  POSTGRES_DB: pulsedesk
+  POSTGRES_USER: pulsedesk
+  POSTGRES_PASSWORD: pulsedesk
+  DATABASE_URL: postgresql://pulsedesk:pulsedesk@postgres:5432/pulsedesk
+  VALKEY_HOST: valkey
+  VALKEY_PORT: "6379"
+  VALKEY_URL: redis://valkey:6379
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector:4318
+  NODE_ENV: development
+  LOG_LEVEL: info
+  SHUTDOWN_TIMEOUT_MS: "25000"
+
+x-svc-depends: &svc-depends
+  depends_on:
+    postgres:
+      condition: service_healthy
+    valkey:
+      condition: service_healthy
+    kafka:
+      condition: service_healthy
+
+x-svc-shutdown: &svc-shutdown
+  stop_signal: SIGTERM
+  stop_grace_period: 30s  # > SHUTDOWN_TIMEOUT_MS (25s) to allow clean drain
+
+services:
+  # ── PostgreSQL ─────────────────────────────────────────────────────────────
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: pulsedesk
+      POSTGRES_USER: pulsedesk
+      POSTGRES_PASSWORD: pulsedesk
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U pulsedesk -d pulsedesk"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    stop_signal: SIGTERM
+    stop_grace_period: 10s
+    restart: unless-stopped
+
+  # ── Valkey (Redis-compatible cache) ───────────────────────────────────────
+  valkey:
+    image: valkey/valkey:7.2-alpine
+    volumes:
+      - valkey_data:/data
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "valkey-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+    stop_signal: SIGTERM
+    stop_grace_period: 10s
+    restart: unless-stopped
+
+  # ── Kafka (single-node KRaft — M1 local profile) ──────────────────────────
+  kafka:
+    image: apache/kafka:3.7.1
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://:9092,CONTROLLER://:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_LOG_DIRS: /var/lib/kafka/data
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+      CLUSTER_ID: MkU3OEVBNTcwNTJENDM2Qk
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    ports:
+      - "9092:9092"
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/kafka/bin/kafka-topics.sh --bootstrap-server localhost:9092 --list || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+    stop_signal: SIGTERM
+    stop_grace_period: 30s
+    restart: unless-stopped
+
+  # ── Observability stack ────────────────────────────────────────────────────
+  prometheus:
+    image: prom/prometheus:v2.51.0
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+    volumes:
+      - ./infrastructure/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+
+  loki:
+    image: grafana/loki:3.0.0
+    command: -config.file=/etc/loki/local-config.yaml
+    volumes:
+      - loki_data:/loki
+    ports:
+      - "3100:3100"
+    restart: unless-stopped
+
+  tempo:
+    image: grafana/tempo:2.4.0
+    command: ["-config.file=/etc/tempo.yml"]
+    volumes:
+      - ./infrastructure/tempo.yml:/etc/tempo.yml:ro
+      - tempo_data:/var/tempo
+    ports:
+      - "3200:3200"
+    restart: unless-stopped
+
+  otel-collector:
+    image: otel/opentelemetry-collector-contrib:0.100.0
+    command: ["--config=/etc/otel-collector.yml"]
+    volumes:
+      - ./infrastructure/otel-collector.yml:/etc/otel-collector.yml:ro
+    ports:
+      - "4317:4317"  # OTLP gRPC
+      - "4318:4318"  # OTLP HTTP
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+    restart: unless-stopped
+
+  grafana:
+    image: grafana/grafana:10.4.0
+    environment:
+      GF_AUTH_ANONYMOUS_ENABLED: "true"
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
+    volumes:
+      - ./infrastructure/grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3001:3000"
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+    restart: unless-stopped
+
+  # ── Application services ───────────────────────────────────────────────────
+  api-gateway:
+    build:
+      context: .
+      dockerfile: services/api-gateway/Dockerfile
+    environment:
+      <<: *infra-env
+      PORT: "3000"
+      CORS_ORIGIN: "http://localhost:5173"
+    ports:
+      - "3000:3000"
+    <<: [*svc-depends, *svc-shutdown]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3000/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  market-data-service:
+    build:
+      context: .
+      dockerfile: services/market-data-service/Dockerfile
+    environment:
+      <<: *infra-env
+      PORT: "3011"
+    <<: [*svc-depends, *svc-shutdown]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3011/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  order-service:
+    build:
+      context: .
+      dockerfile: services/order-service/Dockerfile
+    environment:
+      <<: *infra-env
+      PORT: "3012"
+    <<: [*svc-depends, *svc-shutdown]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3012/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  risk-service:
+    build:
+      context: .
+      dockerfile: services/risk-service/Dockerfile
+    environment:
+      <<: *infra-env
+      PORT: "3013"
+    <<: [*svc-depends, *svc-shutdown]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3013/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  execution-service:
+    build:
+      context: .
+      dockerfile: services/execution-service/Dockerfile
+    environment:
+      <<: *infra-env
+      PORT: "3014"
+    <<: [*svc-depends, *svc-shutdown]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3014/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  portfolio-service:
+    build:
+      context: .
+      dockerfile: services/portfolio-service/Dockerfile
+    environment:
+      <<: *infra-env
+      PORT: "3015"
+    <<: [*svc-depends, *svc-shutdown]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3015/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: services/notification-service/Dockerfile
+    environment:
+      <<: *infra-env
+      PORT: "3016"
+    <<: [*svc-depends, *svc-shutdown]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3016/health || exit 1"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  trader-ui:
+    build:
+      context: .
+      dockerfile: apps/trader-ui/Dockerfile
+    environment:
+      VITE_API_BASE_URL: http://localhost:3000
+    ports:
+      - "5173:5173"
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    stop_signal: SIGTERM
+    stop_grace_period: 5s
+    restart: unless-stopped
+
+# ── Volumes ──────────────────────────────────────────────────────────────────
+volumes:
+  postgres_data:
+  valkey_data:
+  kafka_data:
+  prometheus_data:
+  loki_data:
+  tempo_data:
+  grafana_data:

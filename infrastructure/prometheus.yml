@@ -1,0 +1,43 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: otel-collector
+    static_configs:
+      - targets: ["otel-collector:8889"]
+
+  - job_name: api-gateway
+    static_configs:
+      - targets: ["api-gateway:3000"]
+    metrics_path: /metrics
+
+  - job_name: market-data-service
+    static_configs:
+      - targets: ["market-data-service:3011"]
+    metrics_path: /metrics
+
+  - job_name: order-service
+    static_configs:
+      - targets: ["order-service:3012"]
+    metrics_path: /metrics
+
+  - job_name: risk-service
+    static_configs:
+      - targets: ["risk-service:3013"]
+    metrics_path: /metrics
+
+  - job_name: execution-service
+    static_configs:
+      - targets: ["execution-service:3014"]
+    metrics_path: /metrics
+
+  - job_name: portfolio-service
+    static_configs:
+      - targets: ["portfolio-service:3015"]
+    metrics_path: /metrics
+
+  - job_name: notification-service
+    static_configs:
+      - targets: ["notification-service:3016"]
+    metrics_path: /metrics
