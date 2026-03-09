@@ -31,3 +31,5 @@ dist-ssr
 .claude
 docs/claude
 CLAUDE.md
+coverage
+**/coverage
