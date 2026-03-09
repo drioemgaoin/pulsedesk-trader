@@ -6,7 +6,8 @@ import {
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import fastifyHelmet from '@fastify/helmet';
 import fastifyCors from '@fastify/cors';
-import { Logger } from '@nestjs/common';
+import { Logger } from 'nestjs-pino';
+import { randomUUID } from 'crypto';
 import { AppModule } from './app.module';
 import { ReadinessService } from './app.readiness';
 
@@ -14,19 +15,31 @@ const SERVICE_NAME = 'api-gateway';
 const DEFAULT_PORT = 3000;
 
 async function bootstrap(): Promise<void> {
-  const logger = new Logger('Bootstrap');
-
   const app = await NestFactory.create<NestFastifyApplication>(
     AppModule,
     new FastifyAdapter({ logger: false }),
     { bufferLogs: true },
   );
 
+  app.useLogger(app.get(Logger));
+
   // Security
   await app.register(fastifyHelmet);
   await app.register(fastifyCors, {
     origin: process.env['CORS_ORIGIN'] ?? '*',
   });
+
+  // Correlation ID — generate if absent, echo back in response
+  app
+    .getHttpAdapter()
+    .getInstance()
+    .addHook('onRequest', (req, reply, done) => {
+      const id =
+        (req.headers['x-request-id'] as string | undefined) ?? randomUUID();
+      req.headers['x-request-id'] = id;
+      void reply.header('x-request-id', id);
+      done();
+    });
 
   // OpenAPI stub
   const doc = new DocumentBuilder()
@@ -37,21 +50,17 @@ async function bootstrap(): Promise<void> {
   SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, doc));
 
   // Graceful shutdown
-  // NestJS shutdown hooks invoke BeforeApplicationShutdown (ReadinessService)
-  // and OnModuleDestroy on all providers when SIGTERM/SIGINT is received.
   app.enableShutdownHooks();
 
-  // Hard timeout fallback — ensures process exits even if drain hangs.
-  // ReadinessService.beforeApplicationShutdown fires before this matters.
+  const logger = app.get(Logger);
   const shutdownTimeoutMs = parseInt(
     process.env['SHUTDOWN_TIMEOUT_MS'] ?? '25000',
     10,
   );
   const armHardTimeout = (signal: string): void => {
-    const readiness = app.get(ReadinessService);
-    readiness.setNotReady();
+    app.get(ReadinessService).setNotReady();
     logger.warn(
-      `${signal} received — readiness set to NOT READY, hard timeout armed (${shutdownTimeoutMs}ms)`,
+      `${signal} received — readiness NOT READY, hard timeout armed (${shutdownTimeoutMs}ms)`,
     );
     setTimeout(() => {
       logger.error('Graceful shutdown timed out — forcing exit');

@@ -171,6 +171,7 @@ services:
       <<: *infra-env
       PORT: "3000"
       CORS_ORIGIN: "http://localhost:5173"
+      OTEL_SERVICE_NAME: api-gateway
     ports:
       - "3000:3000"
     <<: [*svc-depends, *svc-shutdown]
@@ -189,6 +190,7 @@ services:
     environment:
       <<: *infra-env
       PORT: "3011"
+      OTEL_SERVICE_NAME: market-data-service
     <<: [*svc-depends, *svc-shutdown]
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3011/health || exit 1"]
@@ -205,6 +207,7 @@ services:
     environment:
       <<: *infra-env
       PORT: "3012"
+      OTEL_SERVICE_NAME: order-service
     <<: [*svc-depends, *svc-shutdown]
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3012/health || exit 1"]
@@ -221,6 +224,7 @@ services:
     environment:
       <<: *infra-env
       PORT: "3013"
+      OTEL_SERVICE_NAME: risk-service
     <<: [*svc-depends, *svc-shutdown]
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3013/health || exit 1"]
@@ -237,6 +241,7 @@ services:
     environment:
       <<: *infra-env
       PORT: "3014"
+      OTEL_SERVICE_NAME: execution-service
     <<: [*svc-depends, *svc-shutdown]
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3014/health || exit 1"]
@@ -253,6 +258,7 @@ services:
     environment:
       <<: *infra-env
       PORT: "3015"
+      OTEL_SERVICE_NAME: portfolio-service
     <<: [*svc-depends, *svc-shutdown]
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3015/health || exit 1"]
@@ -269,6 +275,7 @@ services:
     environment:
       <<: *infra-env
       PORT: "3016"
+      OTEL_SERVICE_NAME: notification-service
     <<: [*svc-depends, *svc-shutdown]
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3016/health || exit 1"]

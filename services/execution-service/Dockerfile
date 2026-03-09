@@ -38,4 +38,4 @@ FROM build AS runner
 WORKDIR /workspace/services/execution-service
 ENV NODE_ENV=production
 EXPOSE 3014
-CMD ["node", "dist/main.js"]
+CMD ["node", "--require", "./dist/instrumentation.js", "dist/main.js"]
