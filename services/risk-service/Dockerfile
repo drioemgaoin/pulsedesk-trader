@@ -33,9 +33,17 @@ COPY services/risk-service/ ./services/risk-service/
 RUN pnpm --filter @pulsedesk/contracts build && \
     pnpm --filter @pulsedesk/risk-service build
 
+# ── Production deploy (devDeps pruned, workspace deps resolved, no pnpm binary) ──
+FROM build AS prod-deploy
+RUN pnpm --filter @pulsedesk/risk-service deploy --prod --legacy /prod/risk-service
+
 # ── Runtime ─────────────────────────────────────────────────────────────────
-FROM build AS runner
-WORKDIR /workspace/services/risk-service
+FROM node:20-alpine AS runner
+WORKDIR /app
 ENV NODE_ENV=production
+# Production-only node_modules from pnpm deploy (no pnpm, no build-time devDeps)
+COPY --from=prod-deploy /prod/risk-service/node_modules ./node_modules
+# Compiled output from build stage (pnpm deploy does not copy dist/)
+COPY --from=build /workspace/services/risk-service/dist ./dist
 EXPOSE 3013
 CMD ["node", "--require", "./dist/instrumentation.js", "dist/main.js"]

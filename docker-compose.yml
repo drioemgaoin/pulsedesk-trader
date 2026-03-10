@@ -237,6 +237,9 @@ services:
       <<: *infra-env
       PORT: "3013"
       OTEL_SERVICE_NAME: risk-service
+      INTERNAL_RISK_API_KEY: local-risk-key-change-in-prod
+      RISK_MAX_QUANTITY: "1000"
+      RISK_MAX_NOTIONAL: "100000"
     <<: [*svc-depends, *svc-shutdown]
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3013/health || exit 1"]

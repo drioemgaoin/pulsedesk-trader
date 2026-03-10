@@ -4,6 +4,7 @@ import {
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { ValidationPipe } from '@nestjs/common';
 import fastifyHelmet from '@fastify/helmet';
 import fastifyCors from '@fastify/cors';
 import { Logger } from 'nestjs-pino';
@@ -11,7 +12,7 @@ import { AppModule } from './app.module';
 import { ReadinessService } from './app.readiness';
 
 const SERVICE_NAME = 'risk-service';
-const DEFAULT_PORT = 3003;
+const DEFAULT_PORT = 3013;
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -21,17 +22,20 @@ async function bootstrap(): Promise<void> {
   );
 
   app.useLogger(app.get(Logger));
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true }));
 
   // Security
+  const corsOrigin = process.env['CORS_ORIGIN'] ?? '*';
+  if (corsOrigin === '*' && process.env['NODE_ENV'] === 'production') {
+    throw new Error('CORS_ORIGIN must be set explicitly in production — wildcard is not allowed');
+  }
   await app.register(fastifyHelmet);
-  await app.register(fastifyCors, {
-    origin: process.env['CORS_ORIGIN'] ?? '*',
-  });
+  await app.register(fastifyCors, { origin: corsOrigin });
 
-  // OpenAPI stub
+  // OpenAPI
   const doc = new DocumentBuilder()
     .setTitle(SERVICE_NAME)
-    .setDescription('PulseDesk ${SERVICE_NAME} — stub')
+    .setDescription('PulseDesk Risk Service — pre-trade risk evaluation')
     .setVersion('1.0')
     .build();
   SwaggerModule.setup('docs', app, SwaggerModule.createDocument(app, doc));

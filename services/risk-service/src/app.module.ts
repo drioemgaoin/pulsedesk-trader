@@ -1,21 +1,14 @@
 import { Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
 import { ReadinessService } from './app.readiness';
+import { EvaluateRiskUseCase } from './application/use-cases/evaluate-risk.use-case';
+import { RISK_METRICS } from './domain/ports/risk-metrics.port';
+import { RiskMetricsService } from './infrastructure/metrics/risk-metrics.service';
 import { HealthController } from './interfaces/http/health.controller';
 import { MetricsController } from './interfaces/http/metrics.controller';
 import { ReadyController } from './interfaces/http/ready.controller';
+import { RiskController } from './interfaces/http/risk.controller';
 
-/**
- * Root module.
- * Domain, application, and infrastructure modules are wired here as the
- * platform grows. Clean architecture boundary: no domain/application logic
- * belongs in this module definition.
- *
- * Layer placeholders:
- *   src/domain/          — entities, value objects, domain events
- *   src/application/     — use-cases, ports (interfaces), commands/queries
- *   src/infrastructure/  — adapters: Prisma, KafkaJS, Valkey, HTTP clients
- */
 @Module({
   imports: [
     LoggerModule.forRoot({
@@ -27,7 +20,12 @@ import { ReadyController } from './interfaces/http/ready.controller';
       },
     }),
   ],
-  controllers: [HealthController, ReadyController, MetricsController],
-  providers: [ReadinessService],
+  controllers: [HealthController, ReadyController, MetricsController, RiskController],
+  providers: [
+    ReadinessService,
+    RiskMetricsService,
+    { provide: RISK_METRICS, useExisting: RiskMetricsService },
+    EvaluateRiskUseCase,
+  ],
 })
 export class AppModule {}
