@@ -4,18 +4,17 @@ import { ReadinessService } from './app.readiness';
 import { HealthController } from './interfaces/http/health.controller';
 import { MetricsController } from './interfaces/http/metrics.controller';
 import { ReadyController } from './interfaces/http/ready.controller';
+import { PositionsController } from './interfaces/http/positions.controller';
+import { PrismaService } from './infrastructure/persistence/prisma.provider';
+import { PrismaPositionRepository } from './infrastructure/persistence/prisma-position.repository';
+import { InMemoryMarketPriceCache } from './infrastructure/cache/in-memory-market-price-cache';
+import { KafkaFillEventConsumer } from './infrastructure/messaging/kafka-fill-event-consumer';
+import { KafkaMarketTickConsumer } from './infrastructure/messaging/kafka-market-tick-consumer';
+import { ProcessFillUseCase } from './application/use-cases/process-fill.use-case';
+import { GetPositionsQuery } from './application/queries/get-positions.query';
+import { POSITION_REPOSITORY } from './domain/ports/position-repository.port';
+import { MARKET_PRICE_CACHE } from './domain/ports/market-price-cache.port';
 
-/**
- * Root module.
- * Domain, application, and infrastructure modules are wired here as the
- * platform grows. Clean architecture boundary: no domain/application logic
- * belongs in this module definition.
- *
- * Layer placeholders:
- *   src/domain/          — entities, value objects, domain events
- *   src/application/     — use-cases, ports (interfaces), commands/queries
- *   src/infrastructure/  — adapters: Prisma, KafkaJS, Valkey, HTTP clients
- */
 @Module({
   imports: [
     LoggerModule.forRoot({
@@ -27,7 +26,16 @@ import { ReadyController } from './interfaces/http/ready.controller';
       },
     }),
   ],
-  controllers: [HealthController, ReadyController, MetricsController],
-  providers: [ReadinessService],
+  controllers: [HealthController, ReadyController, MetricsController, PositionsController],
+  providers: [
+    ReadinessService,
+    PrismaService,
+    { provide: POSITION_REPOSITORY, useClass: PrismaPositionRepository },
+    { provide: MARKET_PRICE_CACHE, useClass: InMemoryMarketPriceCache },
+    ProcessFillUseCase,
+    GetPositionsQuery,
+    KafkaFillEventConsumer,
+    KafkaMarketTickConsumer,
+  ],
 })
 export class AppModule {}

@@ -282,6 +282,10 @@ services:
       <<: *infra-env
       PORT: "3015"
       OTEL_SERVICE_NAME: portfolio-service
+      KAFKA_TOPIC_EXECUTION_EVENTS: execution.events.v1
+      KAFKA_TOPIC_MARKET_TICKS: market.ticks.v1
+      KAFKA_CONSUMER_GROUP_PORTFOLIO: portfolio-service
+      KAFKA_CONSUMER_GROUP_MARKET_PRICES_PORTFOLIO: portfolio-market-prices
     <<: [*svc-depends, *svc-shutdown]
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3015/health || exit 1"]

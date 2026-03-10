@@ -30,12 +30,23 @@ RUN pnpm install --frozen-lockfile
 FROM deps AS build
 COPY packages/contracts/ ./packages/contracts/
 COPY services/portfolio-service/ ./services/portfolio-service/
+RUN cd services/portfolio-service && npx prisma generate
 RUN pnpm --filter @pulsedesk/contracts build && \
     pnpm --filter @pulsedesk/portfolio-service build
 
+# ── Production deploy (devDeps pruned, workspace deps resolved, no pnpm binary) ──
+FROM build AS prod-deploy
+RUN pnpm --filter @pulsedesk/portfolio-service deploy --prod --legacy /prod/portfolio-service && \
+    cp -r /workspace/services/portfolio-service/prisma /prod/portfolio-service/prisma && \
+    cp /workspace/services/portfolio-service/prisma.config.ts /prod/portfolio-service/prisma.config.ts
+WORKDIR /prod/portfolio-service
+RUN node_modules/.bin/prisma generate
+
 # ── Runtime ─────────────────────────────────────────────────────────────────
-FROM build AS runner
-WORKDIR /workspace/services/portfolio-service
+FROM node:20-alpine AS runner
+WORKDIR /app
 ENV NODE_ENV=production
+COPY --from=prod-deploy /prod/portfolio-service/node_modules ./node_modules
+COPY --from=build /workspace/services/portfolio-service/dist ./dist
 EXPOSE 3015
 CMD ["node", "--require", "./dist/instrumentation.js", "dist/main.js"]
