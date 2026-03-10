@@ -95,6 +95,30 @@ export class Order {
     return new Order({ ...this.toProps(), status: OrderStatus.REJECTED, rejectionReason: reason, updatedAt: new Date() });
   }
 
+  /**
+   * Order lifecycle transitions from execution events:
+   *
+   * ACCEPTED  → fill() → FILLED      (normal path)
+   * FILLED    → fill event           → skip (already filled — idempotency)
+   * REJECTED  → fill event           → skip with warning (out-of-order, execution lag)
+   * CANCELLED → fill event           → skip with warning (out-of-order, execution lag)
+   * PENDING   → fill event           → skip with warning (should not happen — execution only processes ACCEPTED)
+   * not found → fill event           → skip with warning (order may have been deleted or wrong topic)
+   */
+  fill(): Order {
+    if (this.status !== OrderStatus.ACCEPTED) {
+      throw new OrderValidationError(`Cannot fill order in status ${this.status}`);
+    }
+    return new Order({ ...this.toProps(), status: OrderStatus.FILLED, updatedAt: new Date() });
+  }
+
+  cancel(): Order {
+    if (this.status !== OrderStatus.ACCEPTED && this.status !== OrderStatus.PENDING) {
+      throw new OrderValidationError(`Cannot cancel order in status ${this.status}`);
+    }
+    return new Order({ ...this.toProps(), status: OrderStatus.CANCELLED, updatedAt: new Date() });
+  }
+
   private toProps(): OrderProps {
     return {
       id: this.id,

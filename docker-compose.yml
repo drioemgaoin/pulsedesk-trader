@@ -223,6 +223,8 @@ services:
       RISK_SERVICE_URL: http://risk-service:3013
       RISK_SERVICE_TIMEOUT_MS: "2000"
       KAFKA_TOPIC_ORDER_EVENTS: orders.events.v1
+      KAFKA_TOPIC_EXECUTION_EVENTS: execution.events.v1
+      KAFKA_CONSUMER_GROUP_EXECUTION_UPDATES: order-execution-updates
     <<: [*svc-depends, *svc-shutdown]
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3012/health || exit 1"]

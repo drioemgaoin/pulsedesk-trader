@@ -105,4 +105,55 @@ describe('Given a PENDING order', () => {
       expect(o.rejectionReason).toBe('position limit exceeded');
     });
   });
+
+  describe('when cancel() is called', () => {
+    it('should return a CANCELLED order', () => {
+      const o = Order.create(VALID_LIMIT_PARAMS).cancel();
+      expect(o.status).toBe(OrderStatus.CANCELLED);
+    });
+  });
+});
+
+describe('Given an ACCEPTED order', () => {
+  const acceptedOrder = () => Order.create(VALID_LIMIT_PARAMS).accept();
+
+  describe('when fill() is called', () => {
+    it('should return a FILLED order', () => {
+      const o = acceptedOrder().fill();
+      expect(o.status).toBe(OrderStatus.FILLED);
+    });
+  });
+
+  describe('when cancel() is called', () => {
+    it('should return a CANCELLED order', () => {
+      const o = acceptedOrder().cancel();
+      expect(o.status).toBe(OrderStatus.CANCELLED);
+    });
+  });
+});
+
+describe('Given a FILLED order', () => {
+  const filledOrder = () => Order.create(VALID_LIMIT_PARAMS).accept().fill();
+
+  describe('when fill() is called', () => {
+    it('should throw OrderValidationError', () => {
+      expect(() => filledOrder().fill()).toThrow(OrderValidationError);
+    });
+  });
+
+  describe('when cancel() is called', () => {
+    it('should throw OrderValidationError', () => {
+      expect(() => filledOrder().cancel()).toThrow(OrderValidationError);
+    });
+  });
+});
+
+describe('Given a REJECTED order', () => {
+  const rejectedOrder = () => Order.create(VALID_LIMIT_PARAMS).reject('risk limit exceeded');
+
+  describe('when fill() is called', () => {
+    it('should throw OrderValidationError', () => {
+      expect(() => rejectedOrder().fill()).toThrow(OrderValidationError);
+    });
+  });
 });
