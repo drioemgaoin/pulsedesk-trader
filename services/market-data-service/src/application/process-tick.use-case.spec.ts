@@ -20,6 +20,7 @@ describe('Given a ProcessTickUseCase instance', () => {
   const metrics: jest.Mocked<ITickMetrics> = {
     incrementEmitted: jest.fn(),
     incrementRejected: jest.fn(),
+    incrementPublishFailed: jest.fn(),
   };
 
   beforeEach(() => jest.clearAllMocks());

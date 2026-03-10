@@ -23,6 +23,7 @@
     "@opentelemetry/sdk-node": "^0.213.0",
     "@pulsedesk/contracts": "workspace:*",
     "fastify": "^5.8.1",
+    "kafkajs": "^2.2.4",
     "nestjs-pino": "^4.6.0",
     "pino": "^9.0.0",
     "pino-http": "^10.0.0",

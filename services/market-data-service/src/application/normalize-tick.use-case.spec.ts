@@ -4,6 +4,7 @@ import type { ITickMetrics } from './ports/metrics.port';
 const makeMetrics = (): jest.Mocked<ITickMetrics> => ({
   incrementEmitted: jest.fn(),
   incrementRejected: jest.fn(),
+  incrementPublishFailed: jest.fn(),
 });
 
 const VALID_RAW = {

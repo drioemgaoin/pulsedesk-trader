@@ -10,6 +10,7 @@ describe('Given a MetricsController instance', () => {
       const text = ctrl.metrics();
       expect(text).toContain('market_tick_emitted_total 1');
       expect(text).toContain('market_tick_rejected_total 0');
+      expect(text).toContain('market_tick_publish_failed_total 0');
     });
   });
 });

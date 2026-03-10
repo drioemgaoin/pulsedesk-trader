@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Logger, Module } from '@nestjs/common';
 import { LoggerModule } from 'nestjs-pino';
 import { ReadinessService } from './app.readiness';
 import { TICK_METRICS } from './application/ports/metrics.port';
@@ -8,6 +8,7 @@ import { ProcessTickUseCase } from './application/process-tick.use-case';
 import { TickSimulatorService } from './application/tick-simulator.service';
 import { TICK_PUBLISHER } from './domain/ports/tick-publisher.port';
 import { TICK_STORE } from './domain/ports/tick-store.port';
+import { KafkaTickPublisher } from './infrastructure/messaging/kafka-tick-publisher';
 import { TickMetricsService } from './infrastructure/metrics/tick-metrics.service';
 import { InMemoryTickStore } from './infrastructure/tick/in-memory-tick-store';
 import { NullTickPublisher } from './infrastructure/tick/null-tick-publisher';
@@ -16,6 +17,14 @@ import { MetricsController } from './interfaces/http/metrics.controller';
 import { ReadyController } from './interfaces/http/ready.controller';
 import { TicksController } from './interfaces/http/ticks.controller';
 import { WatchlistController } from './interfaces/http/watchlist.controller';
+
+const useKafka = Boolean(process.env['KAFKA_BROKER']);
+
+if (!useKafka) {
+  new Logger('AppModule').warn(
+    'KAFKA_BROKER is not set — using NullTickPublisher (no events will be published)',
+  );
+}
 
 @Module({
   imports: [
@@ -41,7 +50,9 @@ import { WatchlistController } from './interfaces/http/watchlist.controller';
     TickMetricsService,
     { provide: TICK_METRICS, useExisting: TickMetricsService },
     { provide: TICK_STORE, useClass: InMemoryTickStore },
-    { provide: TICK_PUBLISHER, useClass: NullTickPublisher },
+    useKafka
+      ? { provide: TICK_PUBLISHER, useClass: KafkaTickPublisher }
+      : { provide: TICK_PUBLISHER, useClass: NullTickPublisher },
     NormalizeTickUseCase,
     ProcessTickUseCase,
     GetWatchlistUseCase,

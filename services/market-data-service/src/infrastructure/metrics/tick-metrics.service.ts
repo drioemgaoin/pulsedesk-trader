@@ -5,6 +5,7 @@ import type { ITickMetrics } from '../../application/ports/metrics.port';
 export class TickMetricsService implements ITickMetrics {
   private _emitted = 0;
   private _rejected = 0;
+  private _publishFailed = 0;
   private readonly startMs: number = this.now();
 
   protected now(): number {
@@ -19,12 +20,20 @@ export class TickMetricsService implements ITickMetrics {
     this._rejected++;
   }
 
+  incrementPublishFailed(): void {
+    this._publishFailed++;
+  }
+
   get emitted(): number {
     return this._emitted;
   }
 
   get rejected(): number {
     return this._rejected;
+  }
+
+  get publishFailed(): number {
+    return this._publishFailed;
   }
 
   get ticksPerSecond(): number {
@@ -44,6 +53,9 @@ export class TickMetricsService implements ITickMetrics {
       '# HELP market_tick_rate_per_second Current average tick emission rate',
       '# TYPE market_tick_rate_per_second gauge',
       `market_tick_rate_per_second ${this.ticksPerSecond.toFixed(2)}`,
+      '# HELP market_tick_publish_failed_total Total ticks that failed to publish to Kafka',
+      '# TYPE market_tick_publish_failed_total counter',
+      `market_tick_publish_failed_total ${this._publishFailed}`,
       '',
     ].join('\n');
   }
