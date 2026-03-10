@@ -7,7 +7,7 @@ const mockProxy = {
   forward: jest.fn().mockResolvedValue({ ok: true }),
 } as unknown as jest.Mocked<ProxyService>;
 
-describe('OrdersController', () => {
+describe('Given an OrdersController instance', () => {
   let controller: OrdersController;
 
   beforeEach(() => {
@@ -15,31 +15,37 @@ describe('OrdersController', () => {
     jest.clearAllMocks();
   });
 
-  it('submit proxies POST to order service', async () => {
-    await controller.submit(makeReq(), { symbol: 'AAPL' });
-    expect(mockProxy.forward).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.stringContaining('/orders'),
-      'POST',
-      { symbol: 'AAPL' },
-    );
+  describe('when submit is called with an order body', () => {
+    it('should proxy POST to the order service /orders endpoint', async () => {
+      await controller.submit(makeReq(), { symbol: 'AAPL' });
+      expect(mockProxy.forward).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('/orders'),
+        'POST',
+        { symbol: 'AAPL' },
+      );
+    });
   });
 
-  it('get proxies GET /orders/:id', async () => {
-    await controller.get(makeReq(), 'order-1');
-    expect(mockProxy.forward).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.stringContaining('/orders/order-1'),
-      'GET',
-    );
+  describe('when get is called with an order id', () => {
+    it('should proxy GET to the order service /orders/:id endpoint', async () => {
+      await controller.get(makeReq(), 'order-1');
+      expect(mockProxy.forward).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('/orders/order-1'),
+        'GET',
+      );
+    });
   });
 
-  it('cancel proxies POST /orders/:id/cancel', async () => {
-    await controller.cancel(makeReq(), 'order-1');
-    expect(mockProxy.forward).toHaveBeenCalledWith(
-      expect.anything(),
-      expect.stringContaining('/orders/order-1/cancel'),
-      'POST',
-    );
+  describe('when cancel is called with an order id', () => {
+    it('should proxy POST to the order service /orders/:id/cancel endpoint', async () => {
+      await controller.cancel(makeReq(), 'order-1');
+      expect(mockProxy.forward).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('/orders/order-1/cancel'),
+        'POST',
+      );
+    });
   });
 });

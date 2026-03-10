@@ -8,17 +8,21 @@ type GuardWithTracker = { getTracker(req: FastifyRequest): Promise<string> };
 const makeGuard = (): GuardWithTracker =>
   Object.create(IdentityThrottleGuard.prototype) as GuardWithTracker;
 
-describe('IdentityThrottleGuard.getTracker', () => {
-  it('returns user.sub for authenticated requests', async () => {
-    const req = {
-      user: { sub: 'trader' } as JwtPayload,
-      ip: '1.2.3.4',
-    } as unknown as FastifyRequest;
-    expect(await makeGuard().getTracker(req)).toBe('trader');
+describe('Given an IdentityThrottleGuard instance', () => {
+  describe('when the request has an authenticated user', () => {
+    it('should return the user sub as tracker key', async () => {
+      const req = {
+        user: { sub: 'trader' } as JwtPayload,
+        ip: '1.2.3.4',
+      } as unknown as FastifyRequest;
+      expect(await makeGuard().getTracker(req)).toBe('trader');
+    });
   });
 
-  it('falls back to IP when no user', async () => {
-    const req = { ip: '1.2.3.4' } as unknown as FastifyRequest;
-    expect(await makeGuard().getTracker(req)).toBe('1.2.3.4');
+  describe('when the request has no authenticated user', () => {
+    it('should fall back to the client IP as tracker key', async () => {
+      const req = { ip: '1.2.3.4' } as unknown as FastifyRequest;
+      expect(await makeGuard().getTracker(req)).toBe('1.2.3.4');
+    });
   });
 });

@@ -9,7 +9,7 @@ const makeCtx = (headers: Record<string, string> = {}): ExecutionContext =>
     }),
   }) as unknown as ExecutionContext;
 
-describe('InternalApiKeyGuard', () => {
+describe('Given an InternalApiKeyGuard instance', () => {
   const ORIGINAL = process.env['INTERNAL_TICK_API_KEY'];
 
   afterEach(() => {
@@ -20,29 +20,37 @@ describe('InternalApiKeyGuard', () => {
     }
   });
 
-  it('allows all requests when INTERNAL_TICK_API_KEY is not set', () => {
-    delete process.env['INTERNAL_TICK_API_KEY'];
-    const guard = new InternalApiKeyGuard();
-    expect(guard.canActivate(makeCtx())).toBe(true);
+  describe('when INTERNAL_TICK_API_KEY is not configured', () => {
+    it('should allow all requests through', () => {
+      delete process.env['INTERNAL_TICK_API_KEY'];
+      const guard = new InternalApiKeyGuard();
+      expect(guard.canActivate(makeCtx())).toBe(true);
+    });
   });
 
-  it('allows request with matching key', () => {
-    process.env['INTERNAL_TICK_API_KEY'] = 'secret';
-    const guard = new InternalApiKeyGuard();
-    expect(guard.canActivate(makeCtx({ 'x-api-key': 'secret' }))).toBe(true);
+  describe('when INTERNAL_TICK_API_KEY is configured and the request has the matching key', () => {
+    it('should allow the request through', () => {
+      process.env['INTERNAL_TICK_API_KEY'] = 'secret';
+      const guard = new InternalApiKeyGuard();
+      expect(guard.canActivate(makeCtx({ 'x-api-key': 'secret' }))).toBe(true);
+    });
   });
 
-  it('throws UnauthorizedException when key is missing', () => {
-    process.env['INTERNAL_TICK_API_KEY'] = 'secret';
-    const guard = new InternalApiKeyGuard();
-    expect(() => guard.canActivate(makeCtx())).toThrow(UnauthorizedException);
+  describe('when INTERNAL_TICK_API_KEY is configured and the request has no key', () => {
+    it('should throw UnauthorizedException', () => {
+      process.env['INTERNAL_TICK_API_KEY'] = 'secret';
+      const guard = new InternalApiKeyGuard();
+      expect(() => guard.canActivate(makeCtx())).toThrow(UnauthorizedException);
+    });
   });
 
-  it('throws UnauthorizedException when key is wrong', () => {
-    process.env['INTERNAL_TICK_API_KEY'] = 'secret';
-    const guard = new InternalApiKeyGuard();
-    expect(() => guard.canActivate(makeCtx({ 'x-api-key': 'wrong' }))).toThrow(
-      UnauthorizedException,
-    );
+  describe('when INTERNAL_TICK_API_KEY is configured and the request has a wrong key', () => {
+    it('should throw UnauthorizedException', () => {
+      process.env['INTERNAL_TICK_API_KEY'] = 'secret';
+      const guard = new InternalApiKeyGuard();
+      expect(() => guard.canActivate(makeCtx({ 'x-api-key': 'wrong' }))).toThrow(
+        UnauthorizedException,
+      );
+    });
   });
 });

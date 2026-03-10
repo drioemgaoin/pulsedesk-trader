@@ -15,38 +15,44 @@ const VALID_RAW = {
   timestamp: '2024-01-01T00:00:00.000Z',
 };
 
-describe('NormalizeTickUseCase', () => {
-  it('returns Tick for valid input', () => {
-    const metrics = makeMetrics();
-    const uc = new NormalizeTickUseCase(metrics);
-    const tick = uc.execute(VALID_RAW);
-    expect(tick).not.toBeNull();
-    expect(tick?.symbol).toBe('AAPL');
-  });
-
-  it('returns null and increments rejected counter for invalid input', () => {
-    const metrics = makeMetrics();
-    const uc = new NormalizeTickUseCase(metrics);
-    const tick = uc.execute({ symbol: '', bid: -1 });
-    expect(tick).toBeNull();
-    expect(metrics.incrementRejected).toHaveBeenCalledTimes(1);
-    expect(metrics.incrementEmitted).not.toHaveBeenCalled();
-  });
-
-  it('returns null for non-object input', () => {
-    const metrics = makeMetrics();
-    const uc = new NormalizeTickUseCase(metrics);
-    expect(uc.execute(null)).toBeNull();
-    expect(metrics.incrementRejected).toHaveBeenCalledTimes(1);
-  });
-
-  it('does not swallow non-validation errors', () => {
-    const metrics = makeMetrics();
-    const uc = new NormalizeTickUseCase(metrics);
-    // Force a non-TickValidationError by passing a getter that throws
-    const trap = Object.defineProperty({}, 'symbol', {
-      get() { throw new RangeError('unexpected'); },
+describe('Given a NormalizeTickUseCase instance', () => {
+  describe('when execute is called with a valid tick payload', () => {
+    it('should return a normalised Tick with the correct symbol', () => {
+      const metrics = makeMetrics();
+      const uc = new NormalizeTickUseCase(metrics);
+      const tick = uc.execute(VALID_RAW);
+      expect(tick).not.toBeNull();
+      expect(tick?.symbol).toBe('AAPL');
     });
-    expect(() => uc.execute(trap)).toThrow(RangeError);
+  });
+
+  describe('when execute is called with an invalid tick payload', () => {
+    it('should return null and increment the rejected counter', () => {
+      const metrics = makeMetrics();
+      const uc = new NormalizeTickUseCase(metrics);
+      const tick = uc.execute({ symbol: '', bid: -1 });
+      expect(tick).toBeNull();
+      expect(metrics.incrementRejected).toHaveBeenCalledTimes(1);
+      expect(metrics.incrementEmitted).not.toHaveBeenCalled();
+    });
+
+    it('should return null for non-object input', () => {
+      const metrics = makeMetrics();
+      const uc = new NormalizeTickUseCase(metrics);
+      expect(uc.execute(null)).toBeNull();
+      expect(metrics.incrementRejected).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  describe('when execute is called and a non-validation error is thrown', () => {
+    it('should rethrow the error without swallowing it', () => {
+      const metrics = makeMetrics();
+      const uc = new NormalizeTickUseCase(metrics);
+      // Force a non-TickValidationError by passing a getter that throws
+      const trap = Object.defineProperty({}, 'symbol', {
+        get() { throw new RangeError('unexpected'); },
+      });
+      expect(() => uc.execute(trap)).toThrow(RangeError);
+    });
   });
 });

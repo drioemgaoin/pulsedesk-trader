@@ -6,15 +6,17 @@ const mockProxy = {
   forward: jest.fn().mockResolvedValue([]),
 } as unknown as jest.Mocked<ProxyService>;
 
-describe('WatchlistController', () => {
-  it('get proxies GET to market-data service /watchlist', async () => {
-    const controller = new WatchlistController(mockProxy);
-    const req = { headers: {} } as unknown as FastifyRequest;
-    await controller.get(req);
-    expect(mockProxy.forward).toHaveBeenCalledWith(
-      req,
-      expect.stringContaining('/watchlist'),
-      'GET',
-    );
+describe('Given a WatchlistController instance', () => {
+  describe('when get is called', () => {
+    it('should proxy GET to the market-data service /watchlist endpoint', async () => {
+      const controller = new WatchlistController(mockProxy);
+      const req = { headers: {} } as unknown as FastifyRequest;
+      await controller.get(req);
+      expect(mockProxy.forward).toHaveBeenCalledWith(
+        req,
+        expect.stringContaining('/watchlist'),
+        'GET',
+      );
+    });
   });
 });
