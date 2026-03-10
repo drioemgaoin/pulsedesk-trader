@@ -4,6 +4,7 @@ import { Order } from '../../../domain/order.entity';
 export class OrderResponseDto {
   @ApiProperty() id!: string;
   @ApiProperty() commandId!: string;
+  @ApiProperty() accountId!: string;
   @ApiProperty() symbol!: string;
   @ApiProperty() side!: string;
   @ApiProperty() type!: string;
@@ -18,6 +19,7 @@ export class OrderResponseDto {
     const dto = new OrderResponseDto();
     dto.id = order.id;
     dto.commandId = order.commandId;
+    dto.accountId = order.accountId;
     dto.symbol = order.symbol;
     dto.side = order.side;
     dto.type = order.type;

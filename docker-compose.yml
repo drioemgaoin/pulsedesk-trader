@@ -222,6 +222,7 @@ services:
       INTERNAL_ORDER_API_KEY: local-order-key-change-in-prod
       RISK_SERVICE_URL: http://risk-service:3013
       RISK_SERVICE_TIMEOUT_MS: "2000"
+      KAFKA_TOPIC_ORDER_EVENTS: orders.events.v1
     <<: [*svc-depends, *svc-shutdown]
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3012/health || exit 1"]

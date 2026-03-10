@@ -7,6 +7,7 @@ import { OrderValidationError } from './errors/order-validation.error';
 const VALID_LIMIT_PARAMS = {
   id: 'id-1',
   commandId: 'cmd-1',
+  accountId: 'acc-001',
   symbol: 'AAPL',
   side: OrderSide.BUY,
   type: OrderType.LIMIT,

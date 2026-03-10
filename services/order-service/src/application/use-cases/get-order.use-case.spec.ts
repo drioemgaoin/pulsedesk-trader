@@ -8,6 +8,7 @@ import { IOrderRepository } from '../../domain/ports/order-repository.port';
 const EXISTING_ORDER = Order.create({
   id: 'order-1',
   commandId: 'cmd-1',
+  accountId: 'acc-001',
   symbol: 'MSFT',
   side: OrderSide.SELL,
   type: OrderType.MARKET,

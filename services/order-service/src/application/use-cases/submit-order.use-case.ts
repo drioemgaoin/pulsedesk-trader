@@ -3,6 +3,7 @@ import { randomUUID } from 'crypto';
 import { Order } from '../../domain/order.entity';
 import { IOrderRepository, ORDER_REPOSITORY } from '../../domain/ports/order-repository.port';
 import { IRiskClient, RISK_CLIENT } from '../../domain/ports/risk-client.port';
+import { IOrderEventPublisher, ORDER_EVENT_PUBLISHER } from '../../domain/ports/order-event-publisher.port';
 import { SubmitOrderCommand } from '../commands/submit-order.command';
 
 export interface SubmitOrderResult {
@@ -17,6 +18,7 @@ export class SubmitOrderUseCase {
   constructor(
     @Inject(ORDER_REPOSITORY) private readonly repo: IOrderRepository,
     @Inject(RISK_CLIENT) private readonly riskClient: IRiskClient,
+    @Inject(ORDER_EVENT_PUBLISHER) private readonly eventPublisher: IOrderEventPublisher,
   ) {}
 
   async execute(cmd: SubmitOrderCommand): Promise<SubmitOrderResult> {
@@ -28,6 +30,7 @@ export class SubmitOrderUseCase {
     const order = Order.create({
       id: randomUUID(),
       commandId: cmd.commandId,
+      accountId: cmd.accountId,
       symbol: cmd.symbol,
       side: cmd.side,
       type: cmd.type,
@@ -64,6 +67,10 @@ export class SubmitOrderUseCase {
     }
 
     const saved = await this.repo.save(finalOrder);
+
+    if (saved.status === 'ACCEPTED') {
+      await this.eventPublisher.publishAccepted(saved);
+    }
 
     this.logger.log({
       event: 'order_submitted',

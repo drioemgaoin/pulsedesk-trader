@@ -1,5 +1,5 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsUUID } from 'class-validator';
+import { IsEnum, IsNotEmpty, IsNumber, IsOptional, IsPositive, IsString, IsUUID } from 'class-validator';
 import { OrderSide } from '../../../domain/enums/order-side.enum';
 import { OrderType } from '../../../domain/enums/order-type.enum';
 
@@ -7,6 +7,11 @@ export class SubmitOrderDto {
   @ApiProperty({ description: 'Client-generated idempotency key (UUID v4)' })
   @IsUUID()
   commandId!: string;
+
+  @ApiProperty({ example: 'acc-001', description: 'Account identifier for this order' })
+  @IsString()
+  @IsNotEmpty()
+  accountId!: string;
 
   @ApiProperty({ example: 'AAPL' })
   @IsNotEmpty()

@@ -9,6 +9,7 @@ datasource db {
 model Order {
   id              String   @id @default(uuid())
   commandId       String   @unique
+  accountId       String
   symbol          String
   side            String
   type            String

@@ -14,6 +14,7 @@ import { SubmitOrderDto } from './dto/submit-order.dto';
 const PENDING_ORDER = Order.create({
   id: 'order-id-1',
   commandId: 'cmd-id-1',
+  accountId: 'acc-001',
   symbol: 'AAPL',
   side: OrderSide.BUY,
   type: OrderType.LIMIT,
@@ -23,6 +24,7 @@ const PENDING_ORDER = Order.create({
 
 const VALID_DTO: SubmitOrderDto = {
   commandId: 'cmd-id-1',
+  accountId: 'acc-001',
   symbol: 'AAPL',
   side: OrderSide.BUY,
   type: OrderType.LIMIT,

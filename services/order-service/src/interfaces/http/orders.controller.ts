@@ -33,6 +33,7 @@ export class OrdersController {
     try {
       const { order, created } = await this.submitOrder.execute({
         commandId: dto.commandId,
+        accountId: dto.accountId,
         symbol: dto.symbol,
         side: dto.side,
         type: dto.type,

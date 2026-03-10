@@ -16,6 +16,7 @@ export class PrismaOrderRepository implements IOrderRepository {
       create: {
         id: order.id,
         commandId: order.commandId,
+        accountId: order.accountId,
         symbol: order.symbol,
         side: order.side,
         type: order.type,
@@ -46,6 +47,7 @@ export class PrismaOrderRepository implements IOrderRepository {
   private toDomain(record: {
     id: string;
     commandId: string;
+    accountId: string;
     symbol: string;
     side: string;
     type: string;
@@ -59,6 +61,7 @@ export class PrismaOrderRepository implements IOrderRepository {
     return new Order({
       id: record.id,
       commandId: record.commandId,
+      accountId: record.accountId,
       symbol: record.symbol,
       side: record.side as OrderSide,
       type: record.type as OrderType,

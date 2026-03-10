@@ -6,6 +6,7 @@ import { OrderValidationError } from './errors/order-validation.error';
 export interface OrderProps {
   id: string;
   commandId: string;
+  accountId: string;
   symbol: string;
   side: OrderSide;
   type: OrderType;
@@ -20,6 +21,7 @@ export interface OrderProps {
 export class Order {
   readonly id: string;
   readonly commandId: string;
+  readonly accountId: string;
   readonly symbol: string;
   readonly side: OrderSide;
   readonly type: OrderType;
@@ -33,6 +35,7 @@ export class Order {
   constructor(props: OrderProps) {
     this.id = props.id;
     this.commandId = props.commandId;
+    this.accountId = props.accountId;
     this.symbol = props.symbol;
     this.side = props.side;
     this.type = props.type;
@@ -47,6 +50,7 @@ export class Order {
   static create(params: {
     id: string;
     commandId: string;
+    accountId: string;
     symbol: string;
     side: OrderSide;
     type: OrderType;
@@ -70,6 +74,7 @@ export class Order {
     return new Order({
       id: params.id,
       commandId: params.commandId,
+      accountId: params.accountId,
       symbol: params.symbol.trim().toUpperCase(),
       side: params.side,
       type: params.type,
@@ -94,6 +99,7 @@ export class Order {
     return {
       id: this.id,
       commandId: this.commandId,
+      accountId: this.accountId,
       symbol: this.symbol,
       side: this.side,
       type: this.type,
