@@ -1,0 +1,22 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Execution {
+  id              String   @id @default(uuid())
+  idempotencyKey  String   @unique
+  orderId         String
+  accountId       String
+  symbol          String
+  side            String
+  filledQuantity  Decimal  @db.Decimal(18, 8)
+  fillPrice       Decimal  @db.Decimal(18, 8)
+  filledAt        DateTime
+
+  @@index([orderId])
+  @@map("executions")
+}

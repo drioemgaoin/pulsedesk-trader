@@ -4,18 +4,17 @@ import { ReadinessService } from './app.readiness';
 import { HealthController } from './interfaces/http/health.controller';
 import { MetricsController } from './interfaces/http/metrics.controller';
 import { ReadyController } from './interfaces/http/ready.controller';
+import { PrismaService } from './infrastructure/persistence/prisma.provider';
+import { PrismaExecutionRepository } from './infrastructure/persistence/prisma-execution.repository';
+import { InMemoryMarketPriceCache } from './infrastructure/cache/in-memory-market-price-cache';
+import { KafkaFillEventPublisher } from './infrastructure/messaging/kafka-fill-event-publisher';
+import { KafkaOrderEventConsumer } from './infrastructure/messaging/kafka-order-event-consumer';
+import { KafkaMarketTickConsumer } from './infrastructure/messaging/kafka-market-tick-consumer';
+import { ProcessOrderUseCase } from './application/use-cases/process-order.use-case';
+import { EXECUTION_REPOSITORY } from './domain/ports/execution-repository.port';
+import { FILL_EVENT_PUBLISHER } from './domain/ports/fill-event-publisher.port';
+import { MARKET_PRICE_CACHE } from './domain/ports/market-price-cache.port';
 
-/**
- * Root module.
- * Domain, application, and infrastructure modules are wired here as the
- * platform grows. Clean architecture boundary: no domain/application logic
- * belongs in this module definition.
- *
- * Layer placeholders:
- *   src/domain/          — entities, value objects, domain events
- *   src/application/     — use-cases, ports (interfaces), commands/queries
- *   src/infrastructure/  — adapters: Prisma, KafkaJS, Valkey, HTTP clients
- */
 @Module({
   imports: [
     LoggerModule.forRoot({
@@ -28,6 +27,15 @@ import { ReadyController } from './interfaces/http/ready.controller';
     }),
   ],
   controllers: [HealthController, ReadyController, MetricsController],
-  providers: [ReadinessService],
+  providers: [
+    ReadinessService,
+    PrismaService,
+    { provide: EXECUTION_REPOSITORY, useClass: PrismaExecutionRepository },
+    { provide: MARKET_PRICE_CACHE, useClass: InMemoryMarketPriceCache },
+    { provide: FILL_EVENT_PUBLISHER, useClass: KafkaFillEventPublisher },
+    ProcessOrderUseCase,
+    KafkaOrderEventConsumer,
+    KafkaMarketTickConsumer,
+  ],
 })
 export class AppModule {}

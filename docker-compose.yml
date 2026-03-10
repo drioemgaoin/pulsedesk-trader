@@ -260,6 +260,11 @@ services:
       <<: *infra-env
       PORT: "3014"
       OTEL_SERVICE_NAME: execution-service
+      KAFKA_TOPIC_ORDER_EVENTS: orders.events.v1
+      KAFKA_TOPIC_EXECUTION_EVENTS: execution.events.v1
+      KAFKA_TOPIC_MARKET_TICKS: market.ticks.v1
+      KAFKA_CONSUMER_GROUP_EXECUTION: execution-service
+      KAFKA_CONSUMER_GROUP_MARKET_PRICES: execution-market-prices
     <<: [*svc-depends, *svc-shutdown]
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:3014/health || exit 1"]
