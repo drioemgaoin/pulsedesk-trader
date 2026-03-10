@@ -30,6 +30,7 @@ RUN pnpm install --frozen-lockfile
 FROM deps AS build
 COPY packages/contracts/ ./packages/contracts/
 COPY services/order-service/ ./services/order-service/
+RUN cd services/order-service && npx prisma generate
 RUN pnpm --filter @pulsedesk/contracts build && \
     pnpm --filter @pulsedesk/order-service build
 

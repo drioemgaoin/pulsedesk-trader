@@ -1,0 +1,24 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Order {
+  id              String   @id @default(uuid())
+  commandId       String   @unique
+  symbol          String
+  side            String
+  type            String
+  quantity        Decimal  @db.Decimal(18, 8)
+  limitPrice      Decimal? @db.Decimal(18, 8)
+  status          String   @default("PENDING")
+  rejectionReason String?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([status])
+  @@map("orders")
+}
