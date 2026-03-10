@@ -18,7 +18,7 @@
     "dev:ui": "pnpm --filter @pulsedesk/trader-ui dev",
     "build": "pnpm -r --filter './packages/*' --filter './apps/*' --filter './services/*' build",
     "lint": "pnpm -r --filter './packages/*' --filter './apps/*' --filter './services/*' lint",
-    "test": "pnpm -r --filter './packages/*' --filter './apps/*' --filter './services/*' test",
+    "test": "pnpm --filter @pulsedesk/contracts build && pnpm -r --filter './packages/*' --filter './apps/*' --filter './services/*' test",
     "preview": "pnpm --filter @pulsedesk/trader-ui preview"
   }
 }
