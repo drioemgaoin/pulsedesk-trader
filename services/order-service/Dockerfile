@@ -34,9 +34,21 @@ RUN cd services/order-service && npx prisma generate
 RUN pnpm --filter @pulsedesk/contracts build && \
     pnpm --filter @pulsedesk/order-service build
 
+# ── Production deploy (devDeps pruned, workspace deps resolved, no pnpm binary) ──
+FROM build AS prod-deploy
+RUN pnpm --filter @pulsedesk/order-service deploy --prod --legacy /prod/order-service && \
+    cp -r /workspace/services/order-service/prisma /prod/order-service/prisma && \
+    cp /workspace/services/order-service/prisma.config.ts /prod/order-service/prisma.config.ts
+WORKDIR /prod/order-service
+RUN node_modules/.bin/prisma generate
+
 # ── Runtime ─────────────────────────────────────────────────────────────────
-FROM build AS runner
-WORKDIR /workspace/services/order-service
+FROM node:20-alpine AS runner
+WORKDIR /app
 ENV NODE_ENV=production
+# Production-only node_modules from pnpm deploy (no pnpm, no build-time devDeps)
+COPY --from=prod-deploy /prod/order-service/node_modules ./node_modules
+# Compiled output from build stage (pnpm deploy does not copy dist/)
+COPY --from=build /workspace/services/order-service/dist ./dist
 EXPOSE 3012
 CMD ["node", "--require", "./dist/instrumentation.js", "dist/main.js"]
