@@ -3,6 +3,7 @@ import {
   FastifyAdapter,
   NestFastifyApplication,
 } from '@nestjs/platform-fastify';
+import { WsAdapter } from '@nestjs/platform-ws';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import fastifyHelmet from '@fastify/helmet';
 import fastifyCors from '@fastify/cors';
@@ -11,7 +12,7 @@ import { AppModule } from './app.module';
 import { ReadinessService } from './app.readiness';
 
 const SERVICE_NAME = 'notification-service';
-const DEFAULT_PORT = 3006;
+const DEFAULT_PORT = 3016;
 
 async function bootstrap(): Promise<void> {
   const app = await NestFactory.create<NestFastifyApplication>(
@@ -21,12 +22,15 @@ async function bootstrap(): Promise<void> {
   );
 
   app.useLogger(app.get(Logger));
+  app.useWebSocketAdapter(new WsAdapter(app));
 
   // Security
+  const corsOrigin = process.env['CORS_ORIGIN'] ?? '*';
+  if (corsOrigin === '*' && process.env['NODE_ENV'] === 'production') {
+    throw new Error('CORS_ORIGIN must be set explicitly in production — wildcard is not allowed');
+  }
   await app.register(fastifyHelmet);
-  await app.register(fastifyCors, {
-    origin: process.env['CORS_ORIGIN'] ?? '*',
-  });
+  await app.register(fastifyCors, { origin: corsOrigin });
 
   // OpenAPI stub
   const doc = new DocumentBuilder()
