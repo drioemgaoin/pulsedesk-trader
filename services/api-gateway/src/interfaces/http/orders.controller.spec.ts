@@ -49,14 +49,29 @@ describe('Given an OrdersController instance', () => {
     });
   });
 
-  describe('when list is called with an accountId', () => {
+  describe('when list is called with an accountId matching the JWT subject', () => {
     it('should proxy GET to the order service /orders?accountId endpoint', async () => {
-      await controller.list(makeReq(), 'acc-001');
+      const req = { ...makeReq(), user: { sub: 'acc-001' } } as unknown as FastifyRequest;
+      await controller.list(req, 'acc-001');
       expect(mockProxy.forward).toHaveBeenCalledWith(
         expect.anything(),
         expect.stringContaining('/orders?accountId=acc-001'),
         'GET',
       );
+    });
+  });
+
+  describe('when list is called with an accountId that does not match the JWT subject', () => {
+    it('should throw a 403 error', async () => {
+      const req = { ...makeReq(), user: { sub: 'acc-other' } } as unknown as FastifyRequest;
+      let thrown: unknown;
+      try {
+        await controller.list(req, 'acc-001');
+      } catch (e) {
+        thrown = e;
+      }
+      expect(thrown).toBeDefined();
+      expect((thrown as { getStatus(): number }).getStatus()).toBe(403);
     });
   });
 });

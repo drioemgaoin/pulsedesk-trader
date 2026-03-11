@@ -280,14 +280,10 @@ describe('PositionsPanel', () => {
       // fakeTimers in discrete steps to avoid the "10 000 timers" abort.
       vi.useFakeTimers({ shouldAdvanceTime: true });
 
-      let callCount = 0;
       const client: ApiClient = {
         submitOrder: vi.fn(),
         getOrders: vi.fn().mockResolvedValue([]),
-        getPositions: vi.fn().mockImplementation(() => {
-          callCount++;
-          return Promise.reject(new Error('Position service unavailable'));
-        }),
+        getPositions: vi.fn().mockRejectedValue(new Error('Position service unavailable')),
       };
       const { unmount } = render(<PositionsPanel client={client} accountId="acc-001" />);
 

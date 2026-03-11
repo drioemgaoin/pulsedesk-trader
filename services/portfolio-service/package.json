@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "prebuild": "prisma generate",
+    "pretest": "prisma generate",
     "build": "nest build",
     "start": "node --require ./dist/instrumentation.js dist/main.js",
     "start:dev": "nest start --watch",
