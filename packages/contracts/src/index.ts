@@ -9,3 +9,5 @@ export * from './events/market.event';
 export * from './events/order.event';
 export * from './events/execution.event';
 export * from './events/portfolio.event';
+
+export * from './ws/v1/stream-message.dto';
