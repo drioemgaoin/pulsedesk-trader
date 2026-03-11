@@ -3,6 +3,7 @@
 export * from './api/v1/order.dto';
 export * from './api/v1/position.dto';
 export * from './api/v1/market.dto';
+export * from './api/v1/pagination.dto';
 
 export * from './events/market.event';
 export * from './events/order.event';

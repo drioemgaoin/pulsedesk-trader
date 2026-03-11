@@ -35,4 +35,43 @@ describe('Given a GetWatchlistUseCase instance', () => {
       expect(result.quotes[1].symbol).toBe('MSFT');
     });
   });
+
+  describe('when execute is called with a symbols filter', () => {
+    it('should return only quotes matching the requested symbols', () => {
+      const ticks = [makeTick('AAPL'), makeTick('MSFT'), makeTick('TSLA')];
+      const store: ITickStore = {
+        upsert: jest.fn(),
+        getAll: jest.fn().mockReturnValue(ticks),
+        get: jest.fn(),
+        size: jest.fn().mockReturnValue(3),
+      };
+      const result = new GetWatchlistUseCase(store).execute(['AAPL', 'TSLA']);
+      expect(result.quotes).toHaveLength(2);
+      expect(result.quotes.map((q) => q.symbol)).toEqual(['AAPL', 'TSLA']);
+    });
+
+    it('should return empty quotes when no tick matches the requested symbols', () => {
+      const ticks = [makeTick('AAPL'), makeTick('MSFT')];
+      const store: ITickStore = {
+        upsert: jest.fn(),
+        getAll: jest.fn().mockReturnValue(ticks),
+        get: jest.fn(),
+        size: jest.fn().mockReturnValue(2),
+      };
+      const result = new GetWatchlistUseCase(store).execute(['NVDA']);
+      expect(result.quotes).toHaveLength(0);
+    });
+
+    it('should return all quotes when an empty symbols array is passed', () => {
+      const ticks = [makeTick('AAPL'), makeTick('MSFT')];
+      const store: ITickStore = {
+        upsert: jest.fn(),
+        getAll: jest.fn().mockReturnValue(ticks),
+        get: jest.fn(),
+        size: jest.fn().mockReturnValue(2),
+      };
+      const result = new GetWatchlistUseCase(store).execute([]);
+      expect(result.quotes).toHaveLength(2);
+    });
+  });
 });

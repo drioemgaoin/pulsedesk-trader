@@ -10,15 +10,18 @@ import {
   Query,
   UseGuards,
 } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiQuery, ApiTags } from '@nestjs/swagger';
 import { GetOrderUseCase } from '../../application/use-cases/get-order.use-case';
 import { GetOrdersUseCase } from '../../application/use-cases/get-orders.use-case';
 import { SubmitOrderUseCase } from '../../application/use-cases/submit-order.use-case';
 import { OrderValidationError } from '../../domain/errors/order-validation.error';
 import { OrderNotFoundError } from '../../domain/errors/order-not-found.error';
+import { OrderStatus } from '../../domain/enums/order-status.enum';
 import { InternalApiKeyGuard } from './guards/internal-api-key.guard';
 import { OrderResponseDto } from './dto/order-response.dto';
 import { SubmitOrderDto } from './dto/submit-order.dto';
+
+const VALID_STATUSES = new Set<string>(Object.values(OrderStatus));
 
 @ApiTags('orders')
 @UseGuards(InternalApiKeyGuard)
@@ -32,13 +35,36 @@ export class OrdersController {
 
   @Get()
   @HttpCode(200)
-  @ApiOperation({ summary: 'List orders by account ID' })
-  async list(@Query('accountId') accountId: string): Promise<OrderResponseDto[]> {
-    if (!accountId || accountId.trim() === '') {
+  @ApiOperation({ summary: 'List orders by account ID with optional pagination and status filter' })
+  @ApiQuery({ name: 'accountId', required: true })
+  @ApiQuery({ name: 'status', required: false, enum: OrderStatus })
+  @ApiQuery({ name: 'limit', required: false, description: '1–200, default 50' })
+  @ApiQuery({ name: 'offset', required: false, description: '>= 0, default 0' })
+  async list(
+    @Query('accountId') accountId: string,
+    @Query('status') status?: string,
+    @Query('limit') limitStr?: string,
+    @Query('offset') offsetStr?: string,
+  ): Promise<{ orders: OrderResponseDto[]; pagination: { limit: number; offset: number; total: number } }> {
+    if (!accountId?.trim()) {
       throw new BadRequestException('accountId query parameter is required');
     }
-    const orders = await this.getOrders.execute(accountId);
-    return orders.map((o) => OrderResponseDto.fromDomain(o));
+    const limit = limitStr !== undefined ? parseInt(limitStr, 10) : 50;
+    const offset = offsetStr !== undefined ? parseInt(offsetStr, 10) : 0;
+    if (isNaN(limit) || limit < 1 || limit > 200) {
+      throw new BadRequestException('limit must be between 1 and 200');
+    }
+    if (isNaN(offset) || offset < 0) {
+      throw new BadRequestException('offset must be 0 or greater');
+    }
+    if (status !== undefined && !VALID_STATUSES.has(status)) {
+      throw new BadRequestException(`status must be one of: ${[...VALID_STATUSES].join(', ')}`);
+    }
+    const result = await this.getOrders.execute({ accountId, status, limit, offset });
+    return {
+      orders: result.orders.map((o) => OrderResponseDto.fromDomain(o)),
+      pagination: { limit: result.limit, offset: result.offset, total: result.total },
+    };
   }
 
   @Post()

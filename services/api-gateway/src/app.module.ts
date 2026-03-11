@@ -20,6 +20,11 @@ import { WatchlistController } from './interfaces/http/watchlist.controller';
 import { JwtStrategy } from './infrastructure/auth/jwt.strategy';
 import { JwtAuthGuard } from './infrastructure/auth/jwt-auth.guard';
 import { IdentityThrottleGuard } from './infrastructure/throttle/identity-throttle.guard';
+import {
+  ValkeyWatchlistCacheAdapter,
+  VALKEY_CLIENT,
+} from './infrastructure/cache/valkey-watchlist-cache.adapter';
+import { WATCHLIST_CACHE } from './application/cache/watchlist-cache.port';
 import { IssueTokenUseCase } from './application/auth/issue-token.use-case';
 import { ProxyService } from './application/proxy/proxy.service';
 
@@ -80,6 +85,16 @@ import { ProxyService } from './application/proxy/proxy.service';
     IdentityThrottleGuard,
     IssueTokenUseCase,
     ProxyService,
+    {
+      provide: VALKEY_CLIENT,
+      useFactory: () =>
+        new Redis({
+          host: process.env['VALKEY_HOST'] ?? 'localhost',
+          port: parseInt(process.env['VALKEY_PORT'] ?? '6379', 10),
+          lazyConnect: true,
+        }),
+    },
+    { provide: WATCHLIST_CACHE, useClass: ValkeyWatchlistCacheAdapter },
     { provide: APP_GUARD, useClass: JwtAuthGuard },
   ],
 })
