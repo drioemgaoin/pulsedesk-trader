@@ -51,6 +51,7 @@ export class RiskHttpClient implements IRiskClient, OnModuleInit {
       errorThresholdPercentage: 50,
       resetTimeout: 10_000,
       volumeThreshold: 5,
+      capacity: 30, // bulkhead: max 30 concurrent in-flight risk evaluations
     });
 
     this.breaker.on('open', () => this.logger.warn('Risk service circuit breaker OPEN'));

@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { APP_GUARD } from '@nestjs/core';
+import { APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
 import { ThrottlerModule } from '@nestjs/throttler';
@@ -27,6 +27,8 @@ import {
 import { WATCHLIST_CACHE } from './application/cache/watchlist-cache.port';
 import { IssueTokenUseCase } from './application/auth/issue-token.use-case';
 import { ProxyService } from './application/proxy/proxy.service';
+import { CircuitBreakerRegistry } from './infrastructure/resilience/circuit-breaker.registry';
+import { LoadSheddingInterceptor } from './infrastructure/resilience/load-shedding.interceptor';
 
 @Module({
   imports: [
@@ -84,7 +86,9 @@ import { ProxyService } from './application/proxy/proxy.service';
     JwtStrategy,
     IdentityThrottleGuard,
     IssueTokenUseCase,
+    CircuitBreakerRegistry,
     ProxyService,
+    { provide: APP_INTERCEPTOR, useClass: LoadSheddingInterceptor },
     {
       provide: VALKEY_CLIENT,
       useFactory: () =>

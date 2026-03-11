@@ -11,7 +11,8 @@ export class PrismaService implements OnModuleInit, OnModuleDestroy {
 
   constructor() {
     this.pool = new Pool({ connectionString: process.env['DATABASE_URL'] });
-    const adapter = new PrismaPg(this.pool);
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const adapter = new PrismaPg(this.pool as any); // @types/pg version mismatch between pnpm hoisted copies
     this.client = new PrismaClient({ adapter });
   }
 
