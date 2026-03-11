@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { z } from 'zod';
 import type { ApiClient } from '../../api/client';
 
@@ -23,6 +23,7 @@ type FormData = z.infer<typeof schema>;
 interface OrderTicketPanelProps {
   client: ApiClient;
   accountId: string;
+  selectedSymbol?: string;
 }
 
 const defaultForm = {
@@ -33,8 +34,15 @@ const defaultForm = {
   limitPrice: '',
 };
 
-export function OrderTicketPanel({ client, accountId }: OrderTicketPanelProps) {
+export function OrderTicketPanel({ client, accountId, selectedSymbol }: OrderTicketPanelProps) {
   const [form, setForm] = useState(defaultForm);
+
+  // Pre-fill symbol field when watchlist selection changes
+  useEffect(() => {
+    if (selectedSymbol) {
+      setForm((f) => ({ ...f, symbol: selectedSymbol }));
+    }
+  }, [selectedSymbol]);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Partial<Record<string, string>>>({});

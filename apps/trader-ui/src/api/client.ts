@@ -59,9 +59,21 @@ export class ApiError extends Error {
   }
 }
 
+export interface GetOrdersQuery {
+  accountId: string;
+  status?: string;
+  limit?: number;
+  offset?: number;
+}
+
+export interface OrdersPageV1 {
+  orders: OrderResponseV1[];
+  pagination: { limit: number; offset: number; total: number };
+}
+
 export interface ApiClient {
   submitOrder(req: SubmitOrderRequestV1): Promise<OrderResponseV1>;
-  getOrders(accountId: string): Promise<OrderResponseV1[]>;
+  getOrders(query: GetOrdersQuery): Promise<OrdersPageV1>;
   getPositions(accountId: string): Promise<PositionsResponseV1>;
 }
 
@@ -125,13 +137,15 @@ export function createApiClient(baseUrl: string, token: string): ApiClient {
       return normaliseOrder(raw);
     },
 
-    async getOrders(accountId: string): Promise<OrderResponseV1[]> {
-      const res = await fetch(
-        `${baseUrl}/api/v1/orders?accountId=${encodeURIComponent(accountId)}`,
-        { headers: headers() },
-      );
-      const raw = await parseResponse<Record<string, unknown>[]>(res);
-      return raw.map(normaliseOrder);
+    async getOrders({ accountId, status, limit = 50, offset = 0 }: GetOrdersQuery): Promise<OrdersPageV1> {
+      const params = new URLSearchParams({ accountId, limit: String(limit), offset: String(offset) });
+      if (status) params.set('status', status);
+      const res = await fetch(`${baseUrl}/api/v1/orders?${params.toString()}`, { headers: headers() });
+      const raw = await parseResponse<{ orders: Record<string, unknown>[]; pagination: { limit: number; offset: number; total: number } }>(res);
+      return {
+        orders: raw.orders.map(normaliseOrder),
+        pagination: raw.pagination,
+      };
     },
 
     async getPositions(accountId: string): Promise<PositionsResponseV1> {

@@ -1,5 +1,5 @@
-import { useEffect, useReducer, useRef } from 'react';
-import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
+import { useEffect, useLayoutEffect, useReducer, useRef, useState } from 'react';
+import { webSocket } from 'rxjs/webSocket';
 
 export interface MarketTick {
   symbol: string;
@@ -11,20 +11,42 @@ export interface MarketTick {
 }
 
 export type WatchlistSnapshot = Record<string, MarketTick>;
+export type WsStatus = 'connecting' | 'connected' | 'reconnecting';
 
 type Action = { type: 'TICK'; payload: MarketTick };
 
 function reducer(state: WatchlistSnapshot, action: Action): WatchlistSnapshot {
   if (action.type === 'TICK') {
-    // Replace existing entry for the symbol — prevents stale state accumulation
     return { ...state, [action.payload.symbol]: action.payload };
   }
   return state;
 }
 
-export function useMarketStream(url: string): WatchlistSnapshot {
+function isMarketTick(msg: unknown): msg is MarketTick {
+  return (
+    typeof msg === 'object' &&
+    msg !== null &&
+    (msg as Record<string, unknown>)['eventType'] === 'market.tick'
+  );
+}
+
+export interface UseMarketStreamOptions {
+  url: string;
+  token: string;
+  symbols: string[];
+}
+
+export interface UseMarketStreamResult {
+  snapshot: WatchlistSnapshot;
+  status: WsStatus;
+}
+
+export function useMarketStream({ url, token, symbols }: UseMarketStreamOptions): UseMarketStreamResult {
   const [snapshot, dispatch] = useReducer(reducer, {});
-  const subjectRef = useRef<WebSocketSubject<MarketTick> | null>(null);
+  const [status, setStatus] = useState<WsStatus>('connecting');
+
+  const symbolsRef = useRef(symbols);
+  useLayoutEffect(() => { symbolsRef.current = symbols; });
 
   useEffect(() => {
     let alive = true;
@@ -32,17 +54,34 @@ export function useMarketStream(url: string): WatchlistSnapshot {
 
     function connect() {
       if (!alive) return;
+      setStatus('connecting');
 
-      const subject = webSocket<MarketTick>(url);
-      subjectRef.current = subject;
+      const wsUrl = `${url}?token=${encodeURIComponent(token)}`;
+
+      // subject captured in closure for openObserver's subscribe call
+      const subject = webSocket<unknown>({
+        url: wsUrl,
+        openObserver: {
+          next: () => {
+            // Send subscribe on every open (including reconnects)
+            subject.next({ event: 'subscribe', data: { symbols: symbolsRef.current } });
+          },
+        },
+      });
 
       subject.subscribe({
-        next: (tick) => {
+        next: (msg) => {
+          if (!alive) return;
           retryDelay = 1000;
-          dispatch({ type: 'TICK', payload: tick });
+          if (isMarketTick(msg)) {
+            setStatus('connected');
+            dispatch({ type: 'TICK', payload: msg });
+          }
+          // ignore 'subscribed' acks and unknown messages
         },
         error: () => {
           if (!alive) return;
+          setStatus('reconnecting');
           setTimeout(() => {
             retryDelay = Math.min(retryDelay * 2, 30_000);
             connect();
@@ -50,18 +89,21 @@ export function useMarketStream(url: string): WatchlistSnapshot {
         },
         complete: () => {
           if (!alive) return;
+          setStatus('reconnecting');
           setTimeout(connect, retryDelay);
         },
       });
+
+      return subject;
     }
 
-    connect();
+    const sub = connect();
 
     return () => {
       alive = false;
-      subjectRef.current?.complete();
+      sub?.complete();
     };
-  }, [url]);
+  }, [url, token]);
 
-  return snapshot;
+  return { snapshot, status };
 }

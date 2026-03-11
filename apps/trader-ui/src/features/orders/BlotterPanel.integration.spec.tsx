@@ -10,7 +10,11 @@
 
 import { render, screen, waitFor, act } from '@testing-library/react';
 import { BlotterPanel } from './BlotterPanel';
-import type { ApiClient, OrderResponseV1 } from '../../api/client';
+import type { ApiClient, OrderResponseV1, OrdersPageV1 } from '../../api/client';
+
+function makePage(orders: OrderResponseV1[], total?: number): OrdersPageV1 {
+  return { orders, pagination: { limit: 50, offset: 0, total: total ?? orders.length } };
+}
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -83,7 +87,7 @@ const MULTI_ORDER_RESPONSE: OrderResponseV1[] = [
 function makeClient(overrides: Partial<ApiClient> = {}): ApiClient {
   return {
     submitOrder: vi.fn(),
-    getOrders: vi.fn().mockResolvedValue(MULTI_ORDER_RESPONSE),
+    getOrders: vi.fn().mockResolvedValue(makePage(MULTI_ORDER_RESPONSE)),
     getPositions: vi.fn().mockResolvedValue({
       positions: [],
       totalUnrealizedPnl: 0,
@@ -174,21 +178,21 @@ describe('BlotterPanel', () => {
   describe('when poll returns an empty orders array', () => {
     it('should show the empty state message', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
-      const client = makeClient({ getOrders: vi.fn().mockResolvedValue([]) });
+      const client = makeClient({ getOrders: vi.fn().mockResolvedValue(makePage([])) });
       render(<BlotterPanel client={client} accountId="acc-001" />);
 
       await waitFor(() => {
-        expect(screen.getByText(/no orders yet/i)).toBeInTheDocument();
+        expect(screen.getByText(/no orders matching filter/i)).toBeInTheDocument();
       });
     });
 
     it('should not render any data rows', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
-      const client = makeClient({ getOrders: vi.fn().mockResolvedValue([]) });
+      const client = makeClient({ getOrders: vi.fn().mockResolvedValue(makePage([])) });
       render(<BlotterPanel client={client} accountId="acc-001" />);
 
       await waitFor(() => {
-        expect(screen.getByText(/no orders yet/i)).toBeInTheDocument();
+        expect(screen.getByText(/no orders matching filter/i)).toBeInTheDocument();
       });
 
       // None of the symbol column values that would indicate a real row
@@ -286,7 +290,7 @@ describe('BlotterPanel', () => {
       const client = makeClient({
         getOrders: vi.fn().mockImplementation(async () => {
           callCount++;
-          if (callCount === 1) return [buildOrder({ symbol: 'AAPL' })];
+          if (callCount === 1) return makePage([buildOrder({ symbol: 'AAPL' })]);
           throw new Error('service unavailable');
         }),
       });
@@ -335,9 +339,9 @@ describe('BlotterPanel', () => {
     it('should render the status chip with gray styling', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
       const client = makeClient({
-        getOrders: vi.fn().mockResolvedValue([
+        getOrders: vi.fn().mockResolvedValue(makePage([
           buildOrder({ orderId: 'ord-p', status: 'PENDING' }),
-        ]),
+        ])),
       });
       render(<BlotterPanel client={client} accountId="acc-001" />);
 
@@ -355,9 +359,9 @@ describe('BlotterPanel', () => {
     it('should render the status chip with blue styling', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
       const client = makeClient({
-        getOrders: vi.fn().mockResolvedValue([
+        getOrders: vi.fn().mockResolvedValue(makePage([
           buildOrder({ orderId: 'ord-a', status: 'ACCEPTED' }),
-        ]),
+        ])),
       });
       render(<BlotterPanel client={client} accountId="acc-001" />);
 
@@ -375,9 +379,9 @@ describe('BlotterPanel', () => {
     it('should render the status chip with green styling', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
       const client = makeClient({
-        getOrders: vi.fn().mockResolvedValue([
+        getOrders: vi.fn().mockResolvedValue(makePage([
           buildOrder({ orderId: 'ord-f', status: 'FILLED' }),
-        ]),
+        ])),
       });
       render(<BlotterPanel client={client} accountId="acc-001" />);
 
@@ -395,9 +399,9 @@ describe('BlotterPanel', () => {
     it('should render the status chip with red styling', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
       const client = makeClient({
-        getOrders: vi.fn().mockResolvedValue([
+        getOrders: vi.fn().mockResolvedValue(makePage([
           buildOrder({ orderId: 'ord-r', status: 'REJECTED' }),
-        ]),
+        ])),
       });
       render(<BlotterPanel client={client} accountId="acc-001" />);
 
@@ -415,9 +419,9 @@ describe('BlotterPanel', () => {
     it('should render the status chip with gray styling', async () => {
       vi.useFakeTimers({ shouldAdvanceTime: true });
       const client = makeClient({
-        getOrders: vi.fn().mockResolvedValue([
+        getOrders: vi.fn().mockResolvedValue(makePage([
           buildOrder({ orderId: 'ord-c', status: 'CANCELLED' }),
-        ]),
+        ])),
       });
       render(<BlotterPanel client={client} accountId="acc-001" />);
 
