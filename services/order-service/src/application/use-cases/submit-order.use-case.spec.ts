@@ -11,6 +11,7 @@ const makeRepo = (existing: Order | null = null): IOrderRepository => ({
   save: jest.fn().mockImplementation((o: Order) => Promise.resolve(o)),
   findByCommandId: jest.fn().mockResolvedValue(existing),
   findById: jest.fn().mockResolvedValue(null),
+  findAllByAccount: jest.fn().mockResolvedValue([]),
 });
 
 const makeRisk = (result: RiskEvaluationResult): IRiskClient => ({

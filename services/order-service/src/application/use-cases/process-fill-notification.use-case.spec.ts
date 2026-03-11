@@ -50,6 +50,7 @@ function makeRepo(order: Order | null): jest.Mocked<IOrderRepository> {
     findById: jest.fn().mockResolvedValue(order),
     findByCommandId: jest.fn().mockResolvedValue(null),
     save: jest.fn().mockImplementation((o: Order) => Promise.resolve(o)),
+    findAllByAccount: jest.fn().mockResolvedValue([]),
   };
 }
 

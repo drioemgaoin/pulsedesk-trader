@@ -44,6 +44,15 @@ export class PrismaOrderRepository implements IOrderRepository {
     return record ? this.toDomain(record) : null;
   }
 
+  async findAllByAccount(accountId: string): Promise<Order[]> {
+    const records = await this.prisma.order.findMany({
+      where: { accountId },
+      orderBy: { createdAt: 'desc' },
+      take: 200,
+    });
+    return records.map((r) => this.toDomain(r));
+  }
+
   private toDomain(record: {
     id: string;
     commandId: string;

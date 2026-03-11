@@ -7,10 +7,12 @@ import {
   NotFoundException,
   Param,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
 import { GetOrderUseCase } from '../../application/use-cases/get-order.use-case';
+import { GetOrdersUseCase } from '../../application/use-cases/get-orders.use-case';
 import { SubmitOrderUseCase } from '../../application/use-cases/submit-order.use-case';
 import { OrderValidationError } from '../../domain/errors/order-validation.error';
 import { OrderNotFoundError } from '../../domain/errors/order-not-found.error';
@@ -25,7 +27,19 @@ export class OrdersController {
   constructor(
     private readonly submitOrder: SubmitOrderUseCase,
     private readonly getOrder: GetOrderUseCase,
+    private readonly getOrders: GetOrdersUseCase,
   ) {}
+
+  @Get()
+  @HttpCode(200)
+  @ApiOperation({ summary: 'List orders by account ID' })
+  async list(@Query('accountId') accountId: string): Promise<OrderResponseDto[]> {
+    if (!accountId || accountId.trim() === '') {
+      throw new BadRequestException('accountId query parameter is required');
+    }
+    const orders = await this.getOrders.execute(accountId);
+    return orders.map((o) => OrderResponseDto.fromDomain(o));
+  }
 
   @Post()
   @ApiOperation({ summary: 'Submit an order command (idempotent via commandId)' })

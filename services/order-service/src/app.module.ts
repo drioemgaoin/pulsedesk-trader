@@ -3,6 +3,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { ReadinessService } from './app.readiness';
 import { SubmitOrderUseCase } from './application/use-cases/submit-order.use-case';
 import { GetOrderUseCase } from './application/use-cases/get-order.use-case';
+import { GetOrdersUseCase } from './application/use-cases/get-orders.use-case';
 import { ProcessFillNotificationUseCase } from './application/use-cases/process-fill-notification.use-case';
 import { PrismaService } from './infrastructure/persistence/prisma.provider';
 import { PrismaOrderRepository } from './infrastructure/persistence/prisma-order.repository';
@@ -37,6 +38,7 @@ import { OrdersController } from './interfaces/http/orders.controller';
     { provide: ORDER_EVENT_PUBLISHER, useClass: KafkaOrderEventPublisher },
     SubmitOrderUseCase,
     GetOrderUseCase,
+    GetOrdersUseCase,
     ProcessFillNotificationUseCase,
     KafkaExecutionEventConsumer,
   ],

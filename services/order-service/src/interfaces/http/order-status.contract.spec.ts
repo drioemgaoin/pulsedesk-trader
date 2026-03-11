@@ -12,6 +12,7 @@ import { Test } from '@nestjs/testing';
 import { OrdersController } from './orders.controller';
 import { SubmitOrderUseCase } from '../../application/use-cases/submit-order.use-case';
 import { GetOrderUseCase } from '../../application/use-cases/get-order.use-case';
+import { GetOrdersUseCase } from '../../application/use-cases/get-orders.use-case';
 import { Order } from '../../domain/order.entity';
 import { OrderSide } from '../../domain/enums/order-side.enum';
 import { OrderStatus } from '../../domain/enums/order-status.enum';
@@ -67,6 +68,7 @@ describe('OrdersController — GET /v1/orders/:id (contract)', () => {
       providers: [
         { provide: SubmitOrderUseCase, useValue: submitUseCase },
         { provide: GetOrderUseCase, useValue: getUseCase },
+        { provide: GetOrdersUseCase, useValue: { execute: jest.fn().mockResolvedValue([]) } },
       ],
     }).compile();
 

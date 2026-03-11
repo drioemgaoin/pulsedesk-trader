@@ -19,6 +19,7 @@ const makeRepo = (order: Order | null): IOrderRepository => ({
   save: jest.fn(),
   findByCommandId: jest.fn(),
   findById: jest.fn().mockResolvedValue(order),
+  findAllByAccount: jest.fn().mockResolvedValue([]),
 });
 
 describe('Given an order exists in the repository', () => {

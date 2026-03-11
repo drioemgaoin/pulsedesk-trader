@@ -48,4 +48,15 @@ describe('Given an OrdersController instance', () => {
       );
     });
   });
+
+  describe('when list is called with an accountId', () => {
+    it('should proxy GET to the order service /orders?accountId endpoint', async () => {
+      await controller.list(makeReq(), 'acc-001');
+      expect(mockProxy.forward).toHaveBeenCalledWith(
+        expect.anything(),
+        expect.stringContaining('/orders?accountId=acc-001'),
+        'GET',
+      );
+    });
+  });
 });
