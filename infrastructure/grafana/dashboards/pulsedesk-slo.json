@@ -1,0 +1,320 @@
+{
+  "title": "PulseDesk SLO Status",
+  "uid": "pulsedesk-slo",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "1m",
+  "time": { "from": "now-24h", "to": "now" },
+  "tags": ["pulsedesk", "slo", "alerts"],
+  "description": "SLO compliance and error budget status. SLO targets: Availability 99.9%, p95 latency <500ms, error rate <1%, Kafka lag <1000.",
+  "panels": [
+    {
+      "id": 1,
+      "title": "Availability SLO — 99.9% target (5-min window)",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 0, "w": 6, "h": 5 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 3,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.99 },
+              { "color": "green", "value": 0.999 }
+            ]
+          },
+          "mappings": []
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "area",
+        "orientation": "auto"
+      },
+      "targets": [
+        {
+          "expr": "min(sli:http_availability:ratio_rate5m)",
+          "legendFormat": "worst service",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "p95 Latency SLO — <500ms target",
+      "type": "stat",
+      "gridPos": { "x": 6, "y": 0, "w": 6, "h": 5 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 500 },
+              { "color": "red", "value": 2000 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "targets": [
+        {
+          "expr": "max(sli:http_latency_p95_ms:rate5m)",
+          "legendFormat": "worst service p95",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Error Rate SLO — <1% target",
+      "type": "stat",
+      "gridPos": { "x": 12, "y": 0, "w": 6, "h": 5 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 2,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 0.01 },
+              { "color": "red", "value": 0.10 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "targets": [
+        {
+          "expr": "max(sli:http_error_rate:ratio_rate5m)",
+          "legendFormat": "worst service",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Kafka Consumer Lag SLO — <1 000 target",
+      "type": "stat",
+      "gridPos": { "x": 18, "y": 0, "w": 6, "h": 5 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1000 },
+              { "color": "red", "value": 10000 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "colorMode": "background",
+        "graphMode": "area"
+      },
+      "targets": [
+        {
+          "expr": "max(sli:kafka_consumer_lag:sum_by_group)",
+          "legendFormat": "max lag",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Monthly Error Budget — Availability 99.9% (30-day rolling)",
+      "type": "gauge",
+      "gridPos": { "x": 0, "y": 5, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Remaining error budget as % of total. 100% = no errors consumed. 0% = SLO breached for the month. Budget = 43.8 min/month.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 1,
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.25 },
+              { "color": "green", "value": 0.50 }
+            ]
+          }
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "showThresholdLabels": true,
+        "showThresholdMarkers": true
+      },
+      "targets": [
+        {
+          "expr": "min(sli:http_availability:ratio_rate30m) - 0.999) / (1 - 0.999)",
+          "legendFormat": "budget remaining",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Availability per Service (5-min SLI)",
+      "type": "timeseries",
+      "gridPos": { "x": 8, "y": 5, "w": 16, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "decimals": 3,
+          "custom": { "lineWidth": 2, "fillOpacity": 5 },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.99 },
+              { "color": "green", "value": 0.999 }
+            ]
+          }
+        },
+        "overrides": [
+          {
+            "matcher": { "id": "byName", "options": "SLO target" },
+            "properties": [
+              { "id": "custom.lineStyle", "value": { "dash": [10, 5], "fill": "dash" } },
+              { "id": "color", "value": { "fixedColor": "red", "mode": "fixed" } }
+            ]
+          }
+        ]
+      },
+      "targets": [
+        {
+          "expr": "sli:http_availability:ratio_rate5m",
+          "legendFormat": "{{service_name}}",
+          "refId": "A"
+        },
+        {
+          "expr": "vector(0.999)",
+          "legendFormat": "SLO target (99.9%)",
+          "refId": "B"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Active Alerts",
+      "type": "alertlist",
+      "gridPos": { "x": 0, "y": 13, "w": 24, "h": 8 },
+      "options": {
+        "alertName": "",
+        "dashboardAlerts": false,
+        "alertInstanceLabelFilter": "",
+        "groupMode": "default",
+        "groupBy": ["severity"],
+        "maxItems": 20,
+        "sortOrder": 3,
+        "stateFilter": {
+          "firing": true,
+          "pending": true,
+          "noData": false,
+          "normal": false,
+          "error": false
+        },
+        "datasource": { "type": "prometheus", "uid": "prometheus" }
+      }
+    },
+    {
+      "id": 8,
+      "title": "Error Burn Rate — 5m vs 30m window",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 21, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "Fast burn (5m) crosses >10% → AvailabilityBurnRateFast alert. Slow burn (5m) crosses >1% sustained 30m → AvailabilityBurnRateSlow alert.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "custom": { "lineWidth": 2, "fillOpacity": 8 }
+        }
+      },
+      "targets": [
+        {
+          "expr": "max by (service_name) (sli:http_error_rate:ratio_rate5m)",
+          "legendFormat": "{{service_name}} (5m)",
+          "refId": "A"
+        },
+        {
+          "expr": "max by (service_name) (1 - sli:http_availability:ratio_rate30m)",
+          "legendFormat": "{{service_name}} (30m)",
+          "refId": "B"
+        },
+        {
+          "expr": "vector(0.10)",
+          "legendFormat": "fast-burn threshold (10%)",
+          "refId": "C"
+        },
+        {
+          "expr": "vector(0.01)",
+          "legendFormat": "slow-burn threshold (1%)",
+          "refId": "D"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Kafka Consumer Lag by Group / Topic",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 21, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": { "lineWidth": 2, "fillOpacity": 8 },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1000 },
+              { "color": "red", "value": 10000 }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "expr": "sli:kafka_consumer_lag:sum_by_group",
+          "legendFormat": "{{consumergroup}} / {{topic}}",
+          "refId": "A"
+        },
+        {
+          "expr": "vector(1000)",
+          "legendFormat": "warn threshold",
+          "refId": "B"
+        },
+        {
+          "expr": "vector(10000)",
+          "legendFormat": "critical threshold",
+          "refId": "C"
+        }
+      ]
+    }
+  ]
+}

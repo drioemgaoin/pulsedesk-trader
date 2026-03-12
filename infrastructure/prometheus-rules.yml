@@ -1,0 +1,195 @@
+## PulseDesk SLI/SLO alerting rules
+##
+## SLO targets (staging profile):
+##   Availability  : 99.9%  (error budget: 43.8 min/month)
+##   Latency p95   : < 500 ms on api-gateway
+##   Error rate    : < 1%   on any service
+##   Kafka lag     : < 1 000 msgs per consumer group (warn), < 10 000 (critical)
+##
+## Runbook: docs/runbook/observability-runbook.md
+
+groups:
+
+  # ── Recording rules ──────────────────────────────────────────────────────
+  # Pre-compute SLI ratios so alert expressions stay readable and efficient.
+
+  - name: pulsedesk.recording_rules
+    interval: 30s
+    rules:
+
+      # Availability SLI — fraction of successful requests (non-5xx) over 5 min
+      - record: sli:http_availability:ratio_rate5m
+        expr: >
+          1 - (
+            sum by (service_name) (rate(http_server_duration_milliseconds_count{http_status_code=~"5.."}[5m]))
+            /
+            sum by (service_name) (rate(http_server_duration_milliseconds_count[5m]))
+          )
+
+      # Availability SLI — 30-minute window for slow-burn detection
+      - record: sli:http_availability:ratio_rate30m
+        expr: >
+          1 - (
+            sum by (service_name) (rate(http_server_duration_milliseconds_count{http_status_code=~"5.."}[30m]))
+            /
+            sum by (service_name) (rate(http_server_duration_milliseconds_count[30m]))
+          )
+
+      # Error rate SLI — 5-minute window
+      - record: sli:http_error_rate:ratio_rate5m
+        expr: >
+          sum by (service_name) (rate(http_server_duration_milliseconds_count{http_status_code=~"5.."}[5m]))
+          /
+          sum by (service_name) (rate(http_server_duration_milliseconds_count[5m]))
+
+      # Latency p95 SLI — 5-minute window
+      - record: sli:http_latency_p95_ms:rate5m
+        expr: >
+          histogram_quantile(0.95,
+            sum by (service_name, le) (rate(http_server_duration_milliseconds_bucket[5m]))
+          )
+
+      # Kafka consumer lag — total lag per consumer group across all topic partitions
+      - record: sli:kafka_consumer_lag:sum_by_group
+        expr: >
+          sum by (consumergroup, topic) (kafka_consumergroup_lag)
+
+  # ── Alerting rules ────────────────────────────────────────────────────────
+
+  - name: pulsedesk.availability
+    rules:
+
+      # Fast burn: >10% error rate for 5 min → exhausts monthly error budget in ~7 h
+      # Severity: critical — page immediately
+      - alert: AvailabilityBurnRateFast
+        expr: sli:http_error_rate:ratio_rate5m > 0.10
+        for: 5m
+        labels:
+          severity: critical
+          slo: availability
+        annotations:
+          summary: "{{ $labels.service_name }} error rate >10% (fast burn)"
+          description: >
+            {{ $labels.service_name }} is returning >10% 5xx responses over the last 5 minutes.
+            At this rate the monthly 99.9% availability error budget will be exhausted in ~7 hours.
+          runbook: "docs/runbook/observability-runbook.md#availability-fast-burn"
+          dashboard: "http://localhost:3001/d/pulsedesk-slo"
+
+      # Slow burn: >1% error rate sustained for 30 min → exhausts budget in ~3 days
+      # Severity: warning — create ticket
+      - alert: AvailabilityBurnRateSlow
+        expr: sli:http_error_rate:ratio_rate5m > 0.01
+        for: 30m
+        labels:
+          severity: warning
+          slo: availability
+        annotations:
+          summary: "{{ $labels.service_name }} error rate >1% (slow burn)"
+          description: >
+            {{ $labels.service_name }} has sustained >1% 5xx responses for 30 minutes.
+            At this rate the monthly 99.9% error budget will be exhausted in ~3 days.
+          runbook: "docs/runbook/observability-runbook.md#availability-slow-burn"
+          dashboard: "http://localhost:3001/d/pulsedesk-slo"
+
+      # Service completely unreachable (Prometheus scrape target down)
+      - alert: ServiceDown
+        expr: >
+          up{job=~"api-gateway|order-service|risk-service|execution-service|portfolio-service|notification-service|market-data-service"}
+          == 0
+        for: 1m
+        labels:
+          severity: critical
+          slo: availability
+        annotations:
+          summary: "{{ $labels.job }} is down (scrape target unreachable)"
+          description: >
+            Prometheus cannot scrape {{ $labels.job }} at {{ $labels.instance }}.
+            The service may have crashed or its /metrics endpoint is unavailable.
+          runbook: "docs/runbook/observability-runbook.md#service-down"
+          dashboard: "http://localhost:3001/d/pulsedesk-platform"
+
+  - name: pulsedesk.latency
+    rules:
+
+      # p95 latency breach on any service — SLO target 500 ms
+      - alert: LatencyP95High
+        expr: sli:http_latency_p95_ms:rate5m > 500
+        for: 5m
+        labels:
+          severity: warning
+          slo: latency
+        annotations:
+          summary: "{{ $labels.service_name }} p95 latency >500 ms"
+          description: >
+            {{ $labels.service_name }} p95 response time is {{ $value | printf "%.0f" }} ms,
+            exceeding the 500 ms SLO target for more than 5 minutes.
+          runbook: "docs/runbook/observability-runbook.md#latency-p95"
+          dashboard: "http://localhost:3001/d/pulsedesk-service-drilldown"
+
+      # Critical latency breach — 3× SLO target, likely circuit breaker imminent
+      - alert: LatencyP95Critical
+        expr: sli:http_latency_p95_ms:rate5m > 2000
+        for: 2m
+        labels:
+          severity: critical
+          slo: latency
+        annotations:
+          summary: "{{ $labels.service_name }} p95 latency >2 s (critical)"
+          description: >
+            {{ $labels.service_name }} p95 latency is {{ $value | printf "%.0f" }} ms.
+            This exceeds the circuit-breaker timeout thresholds and may cascade.
+          runbook: "docs/runbook/observability-runbook.md#latency-p95-critical"
+          dashboard: "http://localhost:3001/d/pulsedesk-service-drilldown"
+
+  - name: pulsedesk.kafka
+    rules:
+
+      # Consumer lag warning — 1 000 messages behind
+      - alert: KafkaConsumerLagHigh
+        expr: sli:kafka_consumer_lag:sum_by_group > 1000
+        for: 5m
+        labels:
+          severity: warning
+          slo: event_lag
+        annotations:
+          summary: "Kafka consumer group {{ $labels.consumergroup }} lag >1 000 on {{ $labels.topic }}"
+          description: >
+            Consumer group {{ $labels.consumergroup }} is {{ $value | printf "%.0f" }} messages behind
+            on topic {{ $labels.topic }}. Sustained lag indicates a slow consumer or upstream spike.
+          runbook: "docs/runbook/observability-runbook.md#kafka-consumer-lag"
+          dashboard: "http://localhost:3001/d/pulsedesk-platform"
+
+      # Consumer lag critical — 10 000 messages behind, processing likely stalled
+      - alert: KafkaConsumerLagCritical
+        expr: sli:kafka_consumer_lag:sum_by_group > 10000
+        for: 2m
+        labels:
+          severity: critical
+          slo: event_lag
+        annotations:
+          summary: "Kafka consumer group {{ $labels.consumergroup }} lag >10 000 on {{ $labels.topic }} (stalled)"
+          description: >
+            Consumer group {{ $labels.consumergroup }} is {{ $value | printf "%.0f" }} messages behind
+            on topic {{ $labels.topic }}. Consumer may be stalled or crashed.
+          runbook: "docs/runbook/observability-runbook.md#kafka-consumer-lag-critical"
+          dashboard: "http://localhost:3001/d/pulsedesk-platform"
+
+  - name: pulsedesk.circuit_breaker
+    rules:
+
+      # Circuit breaker open on gateway — upstream is failing
+      # NOTE: opossum_state requires opossum-prometheus plugin wired in CircuitBreakerRegistry.
+      # Until that is done this alert is in nodata state (silent). Tracked in T4 validation.
+      - alert: CircuitBreakerOpen
+        expr: opossum_state{service_name="api-gateway"} == 2
+        for: 1m
+        labels:
+          severity: warning
+          slo: availability
+        annotations:
+          summary: "api-gateway circuit breaker OPEN for {{ $labels.name }}"
+          description: >
+            The circuit breaker for upstream {{ $labels.name }} has been open for >1 minute.
+            All requests to this upstream are being rejected with 503.
+          runbook: "docs/runbook/observability-runbook.md#circuit-breaker-open"
+          dashboard: "http://localhost:3001/d/pulsedesk-platform"
