@@ -61,6 +61,13 @@ export class ProxyService {
     if (req.headers['traceparent']) {
       headers['traceparent'] = req.headers['traceparent'] as string;
     }
+    // Inject internal service-to-service API key when configured.
+    // This satisfies InternalApiKeyGuard on backend services without
+    // forwarding the client's own credentials.
+    const internalKey = process.env['INTERNAL_ORDER_API_KEY'];
+    if (internalKey) {
+      headers['x-api-key'] = internalKey;
+    }
 
     try {
       const response = await firstValueFrom(

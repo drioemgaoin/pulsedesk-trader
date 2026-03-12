@@ -113,3 +113,85 @@ jobs:
       - name: Tear down stack
         if: always()
         run: docker compose down
+
+  # ── Performance regression gate ─────────────────────────────────────────────
+  # Runs a lightweight k6 smoke suite against the full stack.
+  # Fails CI if p95 latency > 250 ms or error rate > 1% (see load-tests/smoke.js).
+  # Results are uploaded as artifacts for trend comparison across runs.
+  # Reference baseline: load-tests/perf-baseline.json (M7-T1, 2026-03-12).
+  perf-smoke:
+    name: Performance regression gate
+    runs-on: ubuntu-latest
+    needs: build
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Start stack
+        run: docker compose up --build -d
+
+      - name: Wait for gateway to be healthy
+        run: |
+          timeout 300 bash -c 'until curl -sf http://localhost:3000/health > /dev/null; do sleep 10; done'
+          echo "Gateway healthy."
+
+      - name: Install k6
+        run: |
+          sudo gpg -k
+          sudo gpg --no-default-keyring \
+            --keyring /usr/share/keyrings/k6-archive-keyring.gpg \
+            --keyserver hkp://keyserver.ubuntu.com:80 \
+            --recv-keys C5AD17C747E3415A3642D57D77C6C491D6AC1D69
+          echo "deb [signed-by=/usr/share/keyrings/k6-archive-keyring.gpg] https://dl.k6.io/deb stable main" \
+            | sudo tee /etc/apt/sources.list.d/k6.list
+          sudo apt-get update -qq && sudo apt-get install -y k6
+
+      - name: Run performance smoke
+        run: |
+          mkdir -p load-tests/results
+          k6 run \
+            --out json=load-tests/results/smoke.json \
+            --summary-export=load-tests/results/smoke-summary.json \
+            load-tests/smoke.js
+        env:
+          BASE_URL: http://localhost:3000
+
+      - name: Print baseline comparison
+        if: always()
+        run: |
+          echo "=== Performance Smoke Results ==="
+          if [ -f load-tests/results/smoke-summary.json ]; then
+            node -e "
+              const summary = require('./load-tests/results/smoke-summary.json');
+              const baseline = require('./load-tests/perf-baseline.json');
+              const p95 = summary.metrics?.['http_req_duration{scenario:smoke}']?.['p(95)'];
+              const failRate = summary.metrics?.['http_req_failed{expected_response:true}']?.value;
+              const warnMs = baseline.thresholds.smoke_p95_warn_ms;
+              const failMs = baseline.thresholds.smoke_p95_fail_ms;
+              console.log('p95 latency : ' + (p95 ? p95.toFixed(1) + ' ms' : 'n/a'));
+              console.log('Error rate  : ' + (failRate != null ? (failRate * 100).toFixed(2) + '%' : 'n/a'));
+              console.log('Warn threshold : ' + warnMs + ' ms');
+              console.log('Fail threshold : ' + failMs + ' ms');
+              if (p95 && p95 > warnMs) {
+                console.log('WARNING: p95 (' + p95.toFixed(1) + ' ms) exceeds warn threshold (' + warnMs + ' ms) — investigate before merge.');
+              } else {
+                console.log('OK: p95 within warn threshold.');
+              }
+            "
+          fi
+          echo "Baseline reference: load-tests/perf-baseline.json"
+          echo "Run: ${{ github.run_number }} | Commit: ${{ github.sha }}"
+
+      - name: Upload smoke results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: perf-smoke-run-${{ github.run_number }}
+          path: |
+            load-tests/results/smoke-summary.json
+            load-tests/results/smoke.json
+            load-tests/perf-baseline.json
+          retention-days: 90
+
+      - name: Tear down stack
+        if: always()
+        run: docker compose down

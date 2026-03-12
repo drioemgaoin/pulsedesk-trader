@@ -198,6 +198,7 @@ services:
       ORDER_SERVICE_URL: http://order-service:3012
       PORTFOLIO_SERVICE_URL: http://portfolio-service:3015
       MARKET_DATA_SERVICE_URL: http://market-data-service:3011
+      INTERNAL_ORDER_API_KEY: local-order-key-change-in-prod
     ports:
       - "3000:3000"
     <<: [*svc-depends, *svc-shutdown]

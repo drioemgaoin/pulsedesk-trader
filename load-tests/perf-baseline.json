@@ -1,0 +1,21 @@
+{
+  "_comment": "Reference performance baseline from M7-T1 load-test run (2026-03-12). Update this file when intentional infrastructure changes shift the baseline.",
+  "recorded": "2026-03-12",
+  "milestone": "M7-T1",
+  "environment": "local Docker Compose, single replicas",
+  "profile": "baseline (10 VUs × 20 s sustain)",
+  "metrics": {
+    "http_req_duration_p95_ms": {
+      "watchlist_baseline": 29,
+      "order_query_baseline": 24,
+      "order_submit_baseline": 33
+    },
+    "http_req_failed_rate": 0.0
+  },
+  "thresholds": {
+    "smoke_p95_fail_ms": 250,
+    "smoke_p95_warn_ms": 100,
+    "error_rate_fail": 0.01
+  },
+  "notes": "p95 range 11–33 ms on baseline profile. Smoke threshold at 250 ms provides 7–8× headroom before CI regression gate triggers. Warn threshold at 100 ms flags noticeable degradation for investigation even when still within SLO."
+}
