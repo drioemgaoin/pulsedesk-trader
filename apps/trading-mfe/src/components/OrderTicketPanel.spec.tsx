@@ -8,7 +8,8 @@ import { OrderTicketPanel } from './OrderTicketPanel';
 
 describe('OrderTicketPanel', () => {
   it('Given no symbol selected, When rendered, Should show empty symbol field', () => {
-    renderWithProviders(<OrderTicketPanel />);
+    const store = makeStore({ terminal: { selectedSymbol: '', connectionStatus: 'connecting' } } as Parameters<typeof makeStore>[0]);
+    renderWithProviders(<OrderTicketPanel />, { store });
     expect(screen.getByLabelText('Symbol')).toHaveValue('');
   });
 

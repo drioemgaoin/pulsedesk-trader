@@ -23,7 +23,7 @@ const MAX_SYMBOLS_PER_CLIENT = 50;
 /** Maximum allowed length for a single symbol string. */
 const MAX_SYMBOL_LENGTH = 10;
 
-import type { MarketTickEvent } from '@pulsedesk/contracts';
+import type { MarketTickEvent, OrderFilledEvent } from '@pulsedesk/contracts';
 import type { IMarketTickBroadcaster } from '../../domain/ports/market-tick-broadcaster.port';
 
 /** Internal socket shape for backpressure check (ws internals). */
@@ -49,6 +49,9 @@ export class MarketStreamGateway
   /** Per-client symbol subscription set. Populated on connect, removed on disconnect. */
   private readonly subscriptions = new Map<WebSocket, Set<string>>();
 
+  /** Per-client accountId decoded from JWT on connect. Null when JWT_SECRET is not set (dev mode). */
+  private readonly accountIds = new Map<WebSocket, string | null>();
+
   private connectedClients = 0;
   private messagesSent = 0;
   private droppedMessages = 0;
@@ -71,7 +74,8 @@ export class MarketStreamGateway
       }
 
       try {
-        verify(token, secret);
+        const decoded = verify(token, secret) as { sub?: string };
+        this.accountIds.set(client, decoded.sub ?? null);
       } catch {
         this.logger.warn('WS connection rejected — invalid or expired token');
         client.close(4401, 'Unauthorized');
@@ -79,6 +83,7 @@ export class MarketStreamGateway
       }
     } else {
       this.logger.warn('JWT_SECRET not set — WS authentication bypassed (dev/test mode only)');
+      this.accountIds.set(client, null);
     }
 
     this.subscriptions.set(client, new Set());
@@ -88,6 +93,7 @@ export class MarketStreamGateway
 
   handleDisconnect(client: WebSocket): void {
     this.subscriptions.delete(client);
+    this.accountIds.delete(client);
     this.connectedClients--;
     this.logger.log({ activeConnections: this.connectedClients }, 'client disconnected');
   }
@@ -165,6 +171,45 @@ export class MarketStreamGateway
         if (err) {
           this.logger.warn({ err }, 'send error — terminating client');
           client.terminate();
+        } else {
+          this.messagesSent++;
+        }
+      });
+    });
+  }
+
+  broadcastFill(event: OrderFilledEvent): void {
+    const payload = JSON.stringify({
+      event: 'order.filled',
+      data: {
+        orderId: event.orderId,
+        symbol: event.symbol,
+        side: event.side,
+        filledQuantity: event.filledQuantity,
+        fillPrice: event.fillPrice,
+        accountId: event.accountId,
+      },
+    });
+
+    this.server.clients.forEach((client) => {
+      if (client.readyState !== WS_OPEN) return;
+
+      const clientAccountId = this.accountIds.get(client as WebSocket);
+      // When JWT_SECRET is not set clientAccountId is null — broadcast to all (dev mode).
+      // When set, only send to the owning account.
+      if (clientAccountId !== null && clientAccountId !== event.accountId) return;
+
+      const writableLength = (client as unknown as WsInternals)._socket?.writableLength ?? 0;
+      if (writableLength > BACKPRESSURE_HIGH_WATER_MARK) {
+        this.droppedMessages++;
+        this.logger.warn({ accountId: event.accountId }, 'slow consumer — dropping fill message');
+        return;
+      }
+
+      client.send(payload, (err) => {
+        if (err) {
+          this.logger.warn({ err }, 'fill send error — terminating client');
+          (client as WebSocket).terminate();
         } else {
           this.messagesSent++;
         }

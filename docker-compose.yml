@@ -324,6 +324,7 @@ services:
       PORT: "3016"
       CORS_ORIGIN: "http://localhost:5173"
       OTEL_SERVICE_NAME: notification-service
+      KAFKA_TOPIC_EXECUTION_EVENTS: execution.events.v1
     ports:
       - "3016:3016"  # exposed for browser WebSocket connections (ws://localhost:3016/stream)
     <<: [*svc-depends, *svc-shutdown]

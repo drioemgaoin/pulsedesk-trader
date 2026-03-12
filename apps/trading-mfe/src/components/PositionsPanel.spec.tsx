@@ -29,7 +29,8 @@ describe('PositionsPanel', () => {
 
     await waitFor(() => expect(screen.getByText('AAPL')).toBeInTheDocument());
     expect(screen.getByText('100')).toBeInTheDocument();
-    expect(screen.getByText('+1,000.00')).toBeInTheDocument();
+    // PnL appears in both the row cell and the footer total
+    expect(screen.getAllByText('+1,000.00').length).toBeGreaterThanOrEqual(1);
   });
 
   it('Given server error, When data fails to load, Should show error alert', async () => {

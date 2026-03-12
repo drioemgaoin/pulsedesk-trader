@@ -3,6 +3,7 @@ import { LoggerModule } from 'nestjs-pino';
 import { ReadinessService } from './app.readiness';
 import { MARKET_TICK_BROADCASTER } from './domain/ports/market-tick-broadcaster.port';
 import { KafkaMarketTickConsumer } from './infrastructure/messaging/kafka-market-tick-consumer';
+import { KafkaOrderFilledConsumer } from './infrastructure/messaging/kafka-order-filled-consumer';
 import { HealthController } from './interfaces/http/health.controller';
 import { MetricsController } from './interfaces/http/metrics.controller';
 import { ReadyController } from './interfaces/http/ready.controller';
@@ -26,6 +27,7 @@ import { MarketStreamGateway } from './interfaces/ws/market-stream.gateway';
     MarketStreamGateway,
     { provide: MARKET_TICK_BROADCASTER, useExisting: MarketStreamGateway },
     KafkaMarketTickConsumer,
+    KafkaOrderFilledConsumer,
   ],
 })
 export class AppModule {}

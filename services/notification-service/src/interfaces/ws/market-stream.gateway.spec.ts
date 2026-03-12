@@ -1,5 +1,5 @@
 import { MarketStreamGateway } from './market-stream.gateway';
-import type { MarketTickEvent } from '@pulsedesk/contracts';
+import type { MarketTickEvent, OrderFilledEvent } from '@pulsedesk/contracts';
 import { WebSocket } from 'ws';
 import { sign } from 'jsonwebtoken';
 import type { IncomingMessage } from 'http';
@@ -11,6 +11,19 @@ const WS_CLOSED = 3;
 
 const TEST_SECRET = 'test-secret';
 const makeToken = () => sign({ sub: 'acc-001' }, TEST_SECRET, { expiresIn: '1h' });
+
+const makeFill = (accountId = 'acc-001'): OrderFilledEvent => ({
+  eventType: 'execution.filled',
+  schemaVersion: 1,
+  executionId: 'exec-001',
+  orderId: 'ord-001',
+  accountId,
+  symbol: 'AAPL',
+  side: 'BUY',
+  filledQuantity: 10,
+  fillPrice: 160.47,
+  timestamp: new Date().toISOString(),
+});
 
 const makeTick = (symbol = 'TSLA'): MarketTickEvent => ({
   eventType: 'market.tick',
@@ -319,6 +332,76 @@ describe('Given a MarketStreamGateway instance', () => {
 
       gateway.broadcast(makeTick('AAPL'));
       expect(faultyClient.terminate).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // ---- broadcastFill --------------------------------------------------------
+
+  describe('when broadcastFill is called', () => {
+    describe('and JWT_SECRET is set', () => {
+      beforeEach(() => { process.env['JWT_SECRET'] = TEST_SECRET; });
+
+      it('should send fill only to sockets with matching accountId', () => {
+        const ownerClient = makeClient();
+        const otherClient = makeClient();
+        gateway.handleConnection(ownerClient, makeAuthRequest(makeToken())); // sub=acc-001
+        const otherToken = sign({ sub: 'acc-002' }, TEST_SECRET, { expiresIn: '1h' });
+        gateway.handleConnection(otherClient, makeAuthRequest(otherToken));
+
+        const mockServer = { clients: new Set([ownerClient, otherClient]) };
+        (gateway as unknown as { server: typeof mockServer }).server = mockServer;
+        jest.clearAllMocks();
+
+        gateway.broadcastFill(makeFill('acc-001'));
+
+        expect(ownerClient.send).toHaveBeenCalledTimes(1);
+        expect(otherClient.send).not.toHaveBeenCalled();
+      });
+
+      it('should not send fill to sockets with a different accountId', () => {
+        const client = makeClient();
+        gateway.handleConnection(client, makeAuthRequest(makeToken())); // sub=acc-001
+        const mockServer = { clients: new Set([client]) };
+        (gateway as unknown as { server: typeof mockServer }).server = mockServer;
+        jest.clearAllMocks();
+
+        gateway.broadcastFill(makeFill('acc-999'));
+
+        expect(client.send).not.toHaveBeenCalled();
+      });
+
+      it('should serialise fill as order.filled event JSON', () => {
+        const client = makeClient();
+        gateway.handleConnection(client, makeAuthRequest(makeToken()));
+        const mockServer = { clients: new Set([client]) };
+        (gateway as unknown as { server: typeof mockServer }).server = mockServer;
+        jest.clearAllMocks();
+
+        gateway.broadcastFill(makeFill('acc-001'));
+
+        const [payload] = (client.send as jest.Mock).mock.calls[0] as [string];
+        const parsed = JSON.parse(payload) as { event: string; data: { fillPrice: number } };
+        expect(parsed.event).toBe('order.filled');
+        expect(parsed.data.fillPrice).toBe(160.47);
+      });
+    });
+
+    describe('and JWT_SECRET is not set (dev mode)', () => {
+      it('should broadcast fill to all connected clients', () => {
+        const clientA = makeClient();
+        const clientB = makeClient();
+        gateway.handleConnection(clientA, makeRequest('/'));
+        gateway.handleConnection(clientB, makeRequest('/'));
+
+        const mockServer = { clients: new Set([clientA, clientB]) };
+        (gateway as unknown as { server: typeof mockServer }).server = mockServer;
+        jest.clearAllMocks();
+
+        gateway.broadcastFill(makeFill('acc-001'));
+
+        expect(clientA.send).toHaveBeenCalledTimes(1);
+        expect(clientB.send).toHaveBeenCalledTimes(1);
+      });
     });
   });
 

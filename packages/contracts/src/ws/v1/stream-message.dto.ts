@@ -15,3 +15,16 @@ export interface SubscribedAckV1 {
   event: 'subscribed';
   data: { symbols: string[] };
 }
+
+/** Server → Client: order fill notification (sent only to the owning accountId) */
+export interface OrderFilledNotificationV1 {
+  event: 'order.filled';
+  data: {
+    orderId: string;
+    symbol: string;
+    side: 'BUY' | 'SELL';
+    filledQuantity: number;
+    fillPrice: number;
+    accountId: string;
+  };
+}

@@ -10,6 +10,15 @@ export interface MarketTick {
   timestamp: string;
 }
 
+export interface FillEvent {
+  orderId: string;
+  symbol: string;
+  side: 'BUY' | 'SELL';
+  filledQuantity: number;
+  fillPrice: number;
+  accountId: string;
+}
+
 export type WatchlistSnapshot = Record<string, MarketTick>;
 export type WsStatus = 'connecting' | 'connected' | 'reconnecting';
 
@@ -30,10 +39,21 @@ function isMarketTick(msg: unknown): msg is MarketTick {
   );
 }
 
+function isOrderFilled(msg: unknown): msg is { event: 'order.filled'; data: FillEvent } {
+  return (
+    typeof msg === 'object' &&
+    msg !== null &&
+    (msg as Record<string, unknown>)['event'] === 'order.filled'
+  );
+}
+
 export interface UseMarketStreamOptions {
   url: string;
   token: string;
   symbols: string[];
+  /** When provided, fill events are only surfaced if data.accountId matches. */
+  accountId?: string;
+  onFill?: (fill: FillEvent) => void;
 }
 
 export interface UseMarketStreamResult {
@@ -41,12 +61,24 @@ export interface UseMarketStreamResult {
   status: WsStatus;
 }
 
-export function useMarketStream({ url, token, symbols }: UseMarketStreamOptions): UseMarketStreamResult {
+export function useMarketStream({
+  url,
+  token,
+  symbols,
+  accountId,
+  onFill,
+}: UseMarketStreamOptions): UseMarketStreamResult {
   const [snapshot, dispatch] = useReducer(reducer, {});
   const [status, setStatus] = useState<WsStatus>('connecting');
 
   const symbolsRef = useRef(symbols);
   useLayoutEffect(() => { symbolsRef.current = symbols; });
+
+  const onFillRef = useRef(onFill);
+  useLayoutEffect(() => { onFillRef.current = onFill; });
+
+  const accountIdRef = useRef(accountId);
+  useLayoutEffect(() => { accountIdRef.current = accountId; });
 
   useEffect(() => {
     let alive = true;
@@ -71,9 +103,22 @@ export function useMarketStream({ url, token, symbols }: UseMarketStreamOptions)
         next: (msg) => {
           if (!alive) return;
           retryDelay = 1000;
+
           if (isMarketTick(msg)) {
             setStatus('connected');
             dispatch({ type: 'TICK', payload: msg });
+            return;
+          }
+
+          if (isOrderFilled(msg)) {
+            setStatus('connected');
+            const fill = msg.data;
+            const myAccountId = accountIdRef.current;
+            // Defence-in-depth: only surface fills for this account.
+            // The gateway also filters server-side.
+            if (!myAccountId || fill.accountId === myAccountId) {
+              onFillRef.current?.(fill);
+            }
           }
         },
         error: () => {
