@@ -86,6 +86,15 @@ jobs:
         run: pnpm test
 
   # ── Build ───────────────────────────────────────────────────────────────────
+  # Builds all workspace packages including all five MFE apps.
+  # Remotes are built before the shell so that the shell's federation config
+  # (which references remoteEntry.js paths) is validated against real outputs.
+  #
+  # Build order:
+  #   1. @pulsedesk/contracts  — shared types (required by all apps and services)
+  #   2. All four MFE remotes  — independent of each other; pnpm runs in parallel
+  #   3. apps/trader-ui shell  — depends on remote URLs (env vars) baked at build time
+  #   4. All backend services  — independent of UI; pnpm runs in parallel
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -105,8 +114,46 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Build all packages
-        run: pnpm build
+      - name: Build contracts (shared types — required by all apps)
+        run: pnpm --filter @pulsedesk/contracts build
+
+      - name: Build MFE remotes (parallel)
+        run: |
+          pnpm --filter @pulsedesk/trading-mfe build &
+          pnpm --filter @pulsedesk/portfolio-mfe build &
+          pnpm --filter @pulsedesk/orders-mfe build &
+          pnpm --filter @pulsedesk/simulator-mfe build &
+          wait
+        env:
+          # CI build uses localhost defaults; Docker Compose overrides for the actual stack
+          VITE_API_BASE_URL: http://localhost:3000
+          VITE_STREAM_URL: ws://localhost:3016/stream
+
+      - name: Verify remote federation entries exist
+        run: |
+          for app in trading-mfe portfolio-mfe orders-mfe simulator-mfe; do
+            entry="apps/$app/dist/assets/remoteEntry.js"
+            if [ ! -f "$entry" ]; then
+              echo "ERROR: $entry not found — federation build failed for $app"
+              exit 1
+            fi
+            echo "OK: $entry"
+          done
+
+      - name: Build shell (after remotes)
+        run: pnpm --filter @pulsedesk/trader-ui build
+        env:
+          VITE_API_BASE_URL: http://localhost:3000
+          VITE_STREAM_URL: ws://localhost:3016/stream
+          VITE_TRADING_REMOTE_URL: http://localhost:5173/trading
+          VITE_PORTFOLIO_REMOTE_URL: http://localhost:5173/portfolio
+          VITE_ORDERS_REMOTE_URL: http://localhost:5173/orders
+          VITE_SIMULATOR_REMOTE_URL: http://localhost:5173/simulator
+          VITE_GRAFANA_URL: http://localhost:3001
+          VITE_RATE_LIMIT_PER_MIN: "100"
+
+      - name: Build backend services
+        run: pnpm --filter "!@pulsedesk/trader-ui" --filter "!@pulsedesk/trading-mfe" --filter "!@pulsedesk/portfolio-mfe" --filter "!@pulsedesk/orders-mfe" --filter "!@pulsedesk/simulator-mfe" --filter "!@pulsedesk/contracts" build
 
   # ── Compose smoke ───────────────────────────────────────────────────────────
   compose-smoke:
@@ -119,18 +166,43 @@ jobs:
       - name: Start stack
         run: docker compose up --build -d
 
-      - name: Wait for gateway to be healthy
+      - name: Wait for api-gateway to be healthy
         run: |
           echo "Waiting for api-gateway to become healthy (max 300s)..."
           timeout 300 bash -c 'until curl -sf http://localhost:3000/health > /dev/null; do sleep 10; echo "  still waiting..."; done'
           echo "Gateway healthy."
 
-      - name: Verify gateway health endpoint
+      - name: Wait for trader-nginx to be healthy
+        run: |
+          echo "Waiting for trader-nginx to become healthy (max 120s)..."
+          timeout 120 bash -c 'until curl -sf http://localhost:5173/nginx-health > /dev/null; do sleep 5; echo "  still waiting..."; done'
+          echo "NGINX healthy."
+
+      - name: Verify gateway health endpoints
         run: |
           curl -sf http://localhost:3000/health | grep -q '"status":"ok"'
           curl -sf http://localhost:3000/ready | grep -q '"status":"ready"'
           curl -sf -o /dev/null -w "%{http_code}" http://localhost:3000/metrics | grep -q "200"
           echo "Gateway endpoints OK."
+
+      - name: Verify shell is served
+        run: |
+          STATUS=$(curl -sf -o /dev/null -w "%{http_code}" http://localhost:5173/)
+          [ "$STATUS" = "200" ] || { echo "ERROR: shell returned HTTP $STATUS"; exit 1; }
+          echo "Shell OK (HTTP $STATUS)."
+
+      - name: Verify MFE remote federation entries are served
+        run: |
+          for remote in trading portfolio orders simulator; do
+            URL="http://localhost:5173/${remote}/assets/remoteEntry.js"
+            STATUS=$(curl -sf -o /dev/null -w "%{http_code}" "$URL")
+            if [ "$STATUS" != "200" ]; then
+              echo "ERROR: $URL returned HTTP $STATUS"
+              exit 1
+            fi
+            echo "OK: $URL (HTTP $STATUS)"
+          done
+          echo "All remoteEntry.js files served."
 
       - name: Tear down stack
         if: always()

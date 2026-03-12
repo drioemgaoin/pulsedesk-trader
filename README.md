@@ -184,20 +184,27 @@ For active development you run the backend in Docker and the UI locally so Vite'
 **Step 1 — start the backend services only:**
 
 ```bash
-docker compose up --build --scale trader-ui=0
+docker compose up --build --scale trader-nginx=0
 ```
 
-This starts all infrastructure and backend services but skips the containerised UI.
+This starts all infrastructure and backend services but skips the containerised NGINX UI build.
 
-**Step 2 — run the UI locally:**
+**Step 2 — run all five MFE apps locally:**
+
+Each app has its own Vite dev server. Start the four remotes first, then the shell:
 
 ```bash
-pnpm dev
+# In separate terminals (or use a process manager like concurrently):
+pnpm --filter @pulsedesk/trading-mfe dev    # http://localhost:5174
+pnpm --filter @pulsedesk/portfolio-mfe dev  # http://localhost:5175
+pnpm --filter @pulsedesk/orders-mfe dev     # http://localhost:5176
+pnpm --filter @pulsedesk/simulator-mfe dev  # http://localhost:5177
+pnpm --filter @pulsedesk/trader-ui dev      # http://localhost:5173 (shell — start last)
 ```
 
-The UI starts at http://localhost:5173 with HMR enabled. It connects to the API gateway at `http://localhost:3000` and the WebSocket at `ws://localhost:3016/stream` by default.
+Copy `.env.example` to `.env.local` in `apps/trader-ui/` and confirm the dev-profile remote URLs are active (the `http://localhost:517x` variants, not the NGINX sub-path variants).
 
-Edit any file under `apps/trader-ui/src/` and the browser updates immediately.
+The shell loads at http://localhost:5173. Edit any file under any `apps/*/src/` directory and the relevant app's Vite HMR updates the browser immediately.
 
 **Step 3 — stop the backend when done:**
 

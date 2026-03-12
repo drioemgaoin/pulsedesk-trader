@@ -335,20 +335,43 @@ services:
       start_period: 30s
     restart: unless-stopped
 
-  trader-ui:
+  # ── Trader UI — MFE NGINX (shell + 4 remotes, all static) ─────────────────
+  # Replaces the previous trader-ui dev-server service.
+  # Multi-stage build (infrastructure/nginx-mfe.Dockerfile) builds all five Vite
+  # apps and serves them via NGINX Alpine on port 80, exposed as 5173 externally.
+  #
+  # Sub-path layout:
+  #   http://localhost:5173/                             → shell (SPA)
+  #   http://localhost:5173/trading/assets/remoteEntry.js
+  #   http://localhost:5173/portfolio/assets/remoteEntry.js
+  #   http://localhost:5173/orders/assets/remoteEntry.js
+  #   http://localhost:5173/simulator/assets/remoteEntry.js
+  trader-nginx:
     build:
       context: .
-      dockerfile: apps/trader-ui/Dockerfile
-    environment:
-      VITE_API_BASE_URL: http://localhost:3000
-      VITE_STREAM_URL: ws://localhost:3016/stream
+      dockerfile: infrastructure/nginx-mfe.Dockerfile
+      args:
+        VITE_API_BASE_URL: http://localhost:3000
+        VITE_STREAM_URL: ws://localhost:3016/stream
+        VITE_TRADING_REMOTE_URL: http://localhost:5173/trading
+        VITE_PORTFOLIO_REMOTE_URL: http://localhost:5173/portfolio
+        VITE_ORDERS_REMOTE_URL: http://localhost:5173/orders
+        VITE_SIMULATOR_REMOTE_URL: http://localhost:5173/simulator
+        VITE_GRAFANA_URL: http://localhost:3001
+        VITE_RATE_LIMIT_PER_MIN: "100"
     ports:
-      - "5173:5173"
+      - "5173:80"
     depends_on:
       api-gateway:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1:80/nginx-health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
     stop_signal: SIGTERM
-    stop_grace_period: 5s
+    stop_grace_period: 15s
     restart: unless-stopped
 
 # ── Volumes ──────────────────────────────────────────────────────────────────
