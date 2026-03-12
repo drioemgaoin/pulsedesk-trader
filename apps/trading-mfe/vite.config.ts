@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import federation from '@originjs/vite-plugin-federation';
+/// <reference types="vitest" />
 
 const shared = {
   react: { singleton: true, requiredVersion: '^19.0.0' },
@@ -38,5 +39,10 @@ export default defineConfig({
     target: 'es2020',
     minify: false,
     cssCodeSplit: false,
+  },
+  test: {
+    environment: 'jsdom',
+    setupFiles: ['./src/test-setup.ts'],
+    globals: true,
   },
 });

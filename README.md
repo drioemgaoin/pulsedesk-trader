@@ -50,10 +50,10 @@ pnpm install
 
 ## Running the full platform
 
-Everything — all 7 backend services, infrastructure, observability, and the UI — runs from a single command:
+Everything — all 7 backend services, infrastructure, observability, and the containerised UI — runs from a single command:
 
 ```bash
-docker compose up --build
+docker compose --profile frontend up --build
 ```
 
 First start takes a few minutes while images build. Subsequent starts are fast (images are cached).
@@ -179,49 +179,60 @@ Risk limits are also simulated: the risk-service checks quantity per order and t
 
 ## Local development (hot-reload)
 
-For active development you run the backend in Docker and the UI locally so Vite's hot-module replacement picks up your changes instantly.
+For active development you run the backend in Docker and the frontend locally so Vite's hot-module replacement picks up your changes instantly — no rebuilding containers.
 
-**Step 1 — start the backend services only:**
+### Step 1 — start all backend services (no frontend)
+
+`trader-nginx` (the containerised UI) is assigned a `frontend` Docker Compose profile so it is skipped unless you explicitly opt in. A plain `up` starts everything else:
 
 ```bash
-docker compose up --build --scale trader-nginx=0
+docker compose up --build
 ```
 
-This starts all infrastructure and backend services but skips the containerised NGINX UI build.
+All infrastructure and backend services start. `trader-nginx` is not started, so there is no conflict with your local Vite dev servers.
 
-**Step 2 — run all five MFE apps locally:**
+> **Tip:** subsequent starts are fast — images are already built, so you can drop `--build` unless you changed a service.
 
-Each app has its own Vite dev server. Start the four remotes first, then the shell:
+### Step 2 — run the frontend locally
+
+The UI is split into five Vite apps (one shell + four MFE remotes). The **remotes must start before the shell** because the shell resolves their `remoteEntry.js` URLs on startup.
+
+Start all five apps in one terminal:
 
 ```bash
-# In separate terminals (or use a process manager like concurrently):
-pnpm --filter @pulsedesk/trading-mfe dev    # http://localhost:5174
-pnpm --filter @pulsedesk/portfolio-mfe dev  # http://localhost:5175
-pnpm --filter @pulsedesk/orders-mfe dev     # http://localhost:5176
-pnpm --filter @pulsedesk/simulator-mfe dev  # http://localhost:5177
-pnpm --filter @pulsedesk/trader-ui dev      # http://localhost:5173 (shell — start last)
+pnpm dev:frontend
 ```
 
-Copy `.env.example` to `.env.local` in `apps/trader-ui/` and confirm the dev-profile remote URLs are active (the `http://localhost:517x` variants, not the NGINX sub-path variants).
+This runs all remotes and the shell concurrently with colour-coded output per app. Open **http://localhost:5173** and log in with `trader` / `pulsedesk`.
 
-The shell loads at http://localhost:5173. Edit any file under any `apps/*/src/` directory and the relevant app's Vite HMR updates the browser immediately.
+Edit any file under `apps/*/src/` and the browser updates instantly via HMR — no page reload needed for most changes.
 
-**Step 3 — stop the backend when done:**
+> **Minimum setup:** only `trading-mfe` is fully implemented right now. If you only need the trading terminal, you can start just the two relevant apps instead:
+> ```bash
+> pnpm --filter @pulsedesk/trading-mfe dev  # port 5174 — start first
+> pnpm --filter @pulsedesk/trader-ui dev    # port 5173 — open in browser
+> ```
+> The other routes show an error fallback if their remote isn't running, but the rest of the app works fine.
+
+### Step 3 — stop everything when done
 
 ```bash
+# Stop the backend
 docker compose down
+
+# Stop the Vite servers: Ctrl+C in each terminal tab
 ```
 
 ### Changing a backend service
 
-If you need to change a backend service and see the effect live:
+If you edit a backend service and want to see the effect immediately:
 
 ```bash
 # Rebuild and restart only that service (e.g. order-service)
 docker compose up --build --no-deps order-service
 ```
 
-The service restarts with the new code. Other containers are unaffected.
+All other containers are unaffected.
 
 ### Environment variables (UI)
 
@@ -263,7 +274,11 @@ docker compose exec postgres psql -U pulsedesk -d pulsedesk
 
 ```
 apps/
-  trader-ui/          # React + Vite + Tailwind workstation SPA
+  trader-ui/          # Shell — React + Vite + MUI (routing, auth, Redux store, providers)
+  trading-mfe/        # Remote — watchlist, chart, order ticket, blotter, positions
+  portfolio-mfe/      # Remote — account summary, positions table, PnL charts
+  orders-mfe/         # Remote — paginated order history, filters, cancel action
+  simulator-mfe/      # Remote — traffic profile controls, live stats, order feed
 services/
   api-gateway/        # NestJS — auth, rate limiting, proxying
   market-data-service/# Hono — market tick simulation, WebSocket feed

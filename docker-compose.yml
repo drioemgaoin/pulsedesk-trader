@@ -347,6 +347,7 @@ services:
   #   http://localhost:5173/orders/assets/remoteEntry.js
   #   http://localhost:5173/simulator/assets/remoteEntry.js
   trader-nginx:
+    profiles: [frontend]
     build:
       context: .
       dockerfile: infrastructure/nginx-mfe.Dockerfile
