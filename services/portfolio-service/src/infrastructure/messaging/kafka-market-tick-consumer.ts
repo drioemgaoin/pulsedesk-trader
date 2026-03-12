@@ -1,7 +1,7 @@
-import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import { Consumer, Kafka } from 'kafkajs';
 import { MarketTickEvent } from '@pulsedesk/contracts';
-import { IMarketPriceCache } from '../../domain/ports/market-price-cache.port';
+import { IMarketPriceCache, MARKET_PRICE_CACHE } from '../../domain/ports/market-price-cache.port';
 
 @Injectable()
 export class KafkaMarketTickConsumer implements OnModuleInit, OnModuleDestroy {
@@ -9,7 +9,7 @@ export class KafkaMarketTickConsumer implements OnModuleInit, OnModuleDestroy {
   private readonly consumer: Consumer;
   private readonly topic: string;
 
-  constructor(private readonly priceCache: IMarketPriceCache) {
+  constructor(@Inject(MARKET_PRICE_CACHE) private readonly priceCache: IMarketPriceCache) {
     const broker = process.env['KAFKA_BROKER'] ?? 'localhost:9092';
     const clientId = process.env['KAFKA_CLIENT_ID'] ?? 'portfolio-service';
     const groupId = process.env['KAFKA_CONSUMER_GROUP_MARKET_PRICES_PORTFOLIO'] ?? 'portfolio-market-prices';

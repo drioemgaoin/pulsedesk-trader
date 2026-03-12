@@ -1,0 +1,83 @@
+# docker-compose.scale.yml — Horizontal scaling overlay (staging-like profile)
+#
+# Scales stateless and Kafka-consumer tiers to 2+ replicas.
+# Adds nginx to front api-gateway (round-robin) and notification-service (ip_hash sticky).
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.scale.yml up -d
+#
+# Revert to single replicas:
+#   docker compose up -d   (base file only, recreates scaled services back to 1)
+#
+# See docs/scaling-guide.md for per-tier scaling notes and bottleneck analysis.
+
+services:
+
+  # ── Scalable: stateless HTTP ───────────────────────────────────────────────
+  # risk-service has no host port binding and is purely stateless (no DB writes,
+  # no Kafka). Any replica count is safe. DNS round-robin via Docker internal
+  # network name (risk-service) distributes order-service requests.
+  risk-service:
+    deploy:
+      replicas: 2
+
+  # ── Scalable: Kafka consumer tiers ────────────────────────────────────────
+  # Kafka rebalances partitions across all consumers in the same group when
+  # replicas are added or removed. With 10 partitions per topic, up to 10
+  # replicas can consume in parallel per group before partitions are exhausted.
+  #
+  # Graceful drain: stop_grace_period (30s) > SHUTDOWN_TIMEOUT_MS (25s) ensures
+  # in-flight messages are committed before the replica exits.
+
+  execution-service:
+    deploy:
+      replicas: 2
+
+  portfolio-service:
+    deploy:
+      replicas: 2
+
+  # order-service: DB-backed command handler. Multiple replicas share the same
+  # PostgreSQL DB (idempotency key enforces exactly-once). Kafka consumer group
+  # (order-execution-updates) rebalances normally.
+  order-service:
+    deploy:
+      replicas: 2
+
+  # ── api-gateway — scaled behind nginx ─────────────────────────────────────
+  # !reset clears the base file's "3000:3000" host binding so multiple replicas
+  # can start without a port conflict. nginx (below) owns :3000 and proxies
+  # upstream round-robin across all api-gateway replicas.
+  api-gateway:
+    ports: !reset []
+    deploy:
+      replicas: 3
+
+  # ── notification-service — scaled behind nginx (sticky sessions) ───────────
+  # !reset clears the base file's "3016:3016" host binding. nginx ip_hash
+  # ensures each client IP always reaches the same replica (WebSocket sticky).
+  notification-service:
+    ports: !reset []
+    deploy:
+      replicas: 2
+
+  # ── nginx — load balancer for api-gateway and notification-service ─────────
+  # Listens on host ports 3000 (HTTP/REST) and 3016 (WebSocket).
+  # Config: infrastructure/nginx/scale.conf
+  nginx:
+    image: nginx:1.27-alpine
+    ports:
+      - "3000:3000"   # api-gateway (round-robin)
+      - "3016:3016"   # notification-service (ip_hash sticky WebSocket)
+    volumes:
+      - ./infrastructure/nginx/scale.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api-gateway
+      - notification-service
+    stop_signal: SIGTERM
+    stop_grace_period: 10s
+
+  # ── market-data-service — singleton producer (unchanged) ──────────────────
+  # Must remain a single instance. Two producer replicas publishing the same
+  # symbol tick would result in duplicate events on market.ticks.v1, corrupting
+  # portfolio P&L. No fix possible without leader-election architecture.
