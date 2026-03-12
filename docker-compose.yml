@@ -147,6 +147,18 @@ services:
       - tempo
     restart: unless-stopped
 
+  kafka-exporter:
+    image: danielqsj/kafka-exporter:v1.7.0
+    command:
+      - --kafka.server=kafka:9092
+      - --web.listen-address=:9308
+    ports:
+      - "127.0.0.1:9308:9308"  # localhost only — exposes Kafka topology (topic/consumer-group names)
+    depends_on:
+      kafka:
+        condition: service_healthy
+    restart: unless-stopped
+
   grafana:
     image: grafana/grafana:10.4.0
     environment:
@@ -154,6 +166,8 @@ services:
       GF_AUTH_ANONYMOUS_ORG_ROLE: Admin
     volumes:
       - ./infrastructure/grafana/datasources.yml:/etc/grafana/provisioning/datasources/datasources.yml:ro
+      - ./infrastructure/grafana/dashboards.yml:/etc/grafana/provisioning/dashboards/dashboards.yml:ro
+      - ./infrastructure/grafana/dashboards:/etc/grafana/provisioning/dashboards:ro
       - grafana_data:/var/lib/grafana
     ports:
       - "3001:3000"

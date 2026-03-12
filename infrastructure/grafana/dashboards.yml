@@ -1,0 +1,14 @@
+apiVersion: 1
+
+providers:
+  - name: pulsedesk
+    orgId: 1
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    # allowUiUpdates: local dev only — set to false in staging/prod profiles
+    # (Grafana anonymous Admin is enabled in this compose; UI edits would persist
+    #  over provisioned JSON on restart if allowUiUpdates were left true in staging)
+    allowUiUpdates: true
+    options:
+      path: /etc/grafana/provisioning/dashboards

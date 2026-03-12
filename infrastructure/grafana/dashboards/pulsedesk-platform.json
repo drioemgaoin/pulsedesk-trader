@@ -1,0 +1,276 @@
+{
+  "title": "PulseDesk Platform Overview",
+  "uid": "pulsedesk-platform",
+  "schemaVersion": 38,
+  "version": 1,
+  "refresh": "30s",
+  "time": { "from": "now-1h", "to": "now" },
+  "tags": ["pulsedesk", "platform"],
+  "templating": {
+    "list": [
+      {
+        "name": "service",
+        "type": "query",
+        "datasource": { "type": "prometheus", "uid": "prometheus" },
+        "query": "label_values(http_server_duration_milliseconds_count, service_name)",
+        "refresh": 2,
+        "multi": true,
+        "includeAll": true,
+        "current": { "selected": true, "text": "All", "value": "$__all" },
+        "label": "Service"
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "Request Throughput (req/s)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        }
+      },
+      "options": { "tooltip": { "mode": "multi" }, "legend": { "displayMode": "table", "placement": "bottom" } },
+      "targets": [
+        {
+          "expr": "sum by (service_name) (rate(http_server_duration_milliseconds_count{service_name=~\"$service\"}[1m]))",
+          "legendFormat": "{{service_name}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "HTTP Error Rate (%)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 0, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 5 }
+            ]
+          },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        }
+      },
+      "targets": [
+        {
+          "expr": "100 * sum by (service_name) (rate(http_server_duration_milliseconds_count{service_name=~\"$service\", http_status_code=~\"5..\"}[1m])) / sum by (service_name) (rate(http_server_duration_milliseconds_count{service_name=~\"$service\"}[1m]))",
+          "legendFormat": "{{service_name}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Request Latency p50 (ms)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 8, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": { "lineWidth": 2, "fillOpacity": 5 }
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.50, sum by (service_name, le) (rate(http_server_duration_milliseconds_bucket{service_name=~\"$service\"}[1m])))",
+          "legendFormat": "{{service_name}} p50",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Request Latency p95 (ms)",
+      "type": "timeseries",
+      "gridPos": { "x": 8, "y": 8, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 500 },
+              { "color": "red", "value": 2000 }
+            ]
+          },
+          "custom": { "lineWidth": 2, "fillOpacity": 5 }
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.95, sum by (service_name, le) (rate(http_server_duration_milliseconds_bucket{service_name=~\"$service\"}[1m])))",
+          "legendFormat": "{{service_name}} p95",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "Request Latency p99 (ms)",
+      "type": "timeseries",
+      "gridPos": { "x": 16, "y": 8, "w": 8, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "ms",
+          "custom": { "lineWidth": 2, "fillOpacity": 5 }
+        }
+      },
+      "targets": [
+        {
+          "expr": "histogram_quantile(0.99, sum by (service_name, le) (rate(http_server_duration_milliseconds_bucket{service_name=~\"$service\"}[1m])))",
+          "legendFormat": "{{service_name}} p99",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Kafka Consumer Lag (messages behind)",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 16, "w": 24, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 100 },
+              { "color": "red", "value": 1000 }
+            ]
+          },
+          "custom": { "lineWidth": 2, "fillOpacity": 10 }
+        }
+      },
+      "targets": [
+        {
+          "expr": "sum by (consumergroup, topic) (kafka_consumergroup_lag{topic=~\"orders|risk-evaluation|executions|portfolio-updates\"})",
+          "legendFormat": "{{consumergroup}} / {{topic}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Circuit Breaker State",
+      "type": "timeseries",
+      "gridPos": { "x": 0, "y": 24, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "0=closed (healthy), 1=half-open, 2=open (degraded). Sustained 2 indicates upstream failure.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "mappings": [
+            { "type": "value", "options": { "0": { "text": "CLOSED", "color": "green" }, "1": { "text": "HALF-OPEN", "color": "yellow" }, "2": { "text": "OPEN", "color": "red" } } }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 2 }
+            ]
+          },
+          "custom": { "lineWidth": 2, "fillOpacity": 20 }
+        }
+      },
+      "targets": [
+        {
+          "expr": "opossum_state{service_name=~\"$service\"}",
+          "legendFormat": "{{service_name}} → {{name}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Load Shedding Events (req/s)",
+      "type": "timeseries",
+      "gridPos": { "x": 12, "y": 24, "w": 12, "h": 8 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "description": "503 responses from LoadSheddingInterceptor — sustained rate indicates gateway saturation.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "reqps",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "green", "value": null },
+              { "color": "yellow", "value": 1 },
+              { "color": "red", "value": 10 }
+            ]
+          },
+          "custom": { "lineWidth": 2, "fillOpacity": 15 }
+        }
+      },
+      "targets": [
+        {
+          "expr": "rate(http_server_duration_milliseconds_count{service_name=\"api-gateway\", http_status_code=\"503\"}[1m])",
+          "legendFormat": "api-gateway 503 shed",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Service Availability (SLO: 99.9%)",
+      "type": "stat",
+      "gridPos": { "x": 0, "y": 32, "w": 24, "h": 6 },
+      "datasource": { "type": "prometheus", "uid": "prometheus" },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              { "color": "red", "value": null },
+              { "color": "yellow", "value": 0.99 },
+              { "color": "green", "value": 0.999 }
+            ]
+          },
+          "mappings": []
+        }
+      },
+      "options": {
+        "reduceOptions": { "calcs": ["lastNotNull"] },
+        "orientation": "horizontal",
+        "textMode": "auto",
+        "colorMode": "background"
+      },
+      "targets": [
+        {
+          "expr": "1 - (sum by (service_name) (rate(http_server_duration_milliseconds_count{service_name=~\"$service\", http_status_code=~\"5..\"}[1h])) / sum by (service_name) (rate(http_server_duration_milliseconds_count{service_name=~\"$service\"}[1h])))",
+          "legendFormat": "{{service_name}}",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Active Traces — Full Request Path",
+      "type": "text",
+      "gridPos": { "x": 0, "y": 38, "w": 24, "h": 3 },
+      "options": {
+        "mode": "markdown",
+        "content": "**Trace exploration:** Open Grafana Explore → select **Tempo** datasource → search by `service.name` or use the Trace ID from logs.\n\nTrace propagation path: `api-gateway` → `order-service` → `risk-service` → `execution-service` → `portfolio-service`\n\nLogs are linked via `traceId` field — click any trace span to jump to correlated Loki logs."
+      }
+    }
+  ]
+}
