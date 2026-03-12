@@ -50,6 +50,19 @@ describe('Given the risk service is reachable', () => {
         }),
       );
     });
+
+    it('should include orderId and commandId in the request body', async () => {
+      const fetchMock = mockFetch(APPROVED_BODY);
+      global.fetch = fetchMock;
+      await client.evaluate(BASE_REQ);
+      const [, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+      const body = JSON.parse(init.body as string) as Record<string, unknown>;
+      expect(body['orderId']).toBe(BASE_REQ.orderId);
+      expect(body['commandId']).toBe(BASE_REQ.commandId);
+      expect(body['symbol']).toBe(BASE_REQ.symbol);
+      expect(body['quantity']).toBe(BASE_REQ.quantity);
+      expect(body['limitPrice']).toBe(BASE_REQ.limitPrice);
+    });
   });
 
   describe('when the risk service returns REJECTED', () => {

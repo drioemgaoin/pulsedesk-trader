@@ -29,6 +29,8 @@ export class RiskHttpClient implements IRiskClient, OnModuleInit {
             'x-api-key': apiKey,
           },
           body: JSON.stringify({
+            orderId: req.orderId,
+            commandId: req.commandId,
             symbol: req.symbol,
             quantity: req.quantity,
             limitPrice: req.limitPrice,
