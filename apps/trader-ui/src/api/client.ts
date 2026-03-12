@@ -111,6 +111,27 @@ function normaliseOrder(raw: Record<string, unknown>): OrderResponseV1 {
   };
 }
 
+const API_BASE_URL =
+  (import.meta.env['VITE_API_BASE_URL'] as string | undefined) ?? 'http://localhost:3000';
+
+let _authToken: string | null = null;
+
+export function setAuthToken(token: string | null): void {
+  _authToken = token;
+}
+
+export async function apiClient<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(init.headers as Record<string, string> | undefined),
+  };
+  if (_authToken) {
+    headers['Authorization'] = `Bearer ${_authToken}`;
+  }
+  const res = await fetch(`${API_BASE_URL}${path}`, { ...init, headers });
+  return parseResponse<T>(res);
+}
+
 export function createApiClient(baseUrl: string, token: string): ApiClient {
   const headers = (): Record<string, string> => ({
     'Content-Type': 'application/json',
