@@ -1,0 +1,62 @@
+# ── PulseDesk Helm Values — Staging overrides ────────────────────────────────
+#
+# Usage:
+#   helm upgrade --install pulsedesk ./helm/pulsedesk \
+#     -f helm/pulsedesk/values.staging.yaml \
+#     --set global.imageTag=<git-sha>
+#
+# Staging uses bundled sub-charts (postgresql, valkey, kafka).
+# Production should disable them and point to managed services.
+
+global:
+  nodeEnv: staging
+  logLevel: debug
+  imageTag: latest
+
+ingress:
+  apiHost: api.staging.pulsedesk.example.com
+  notificationHost: stream.staging.pulsedesk.example.com
+
+# Reduce replicas and resources for staging cost efficiency
+services:
+  api-gateway:
+    replicas: 1
+    hpa:
+      enabled: false
+    env:
+      CORS_ORIGIN: "https://api.staging.pulsedesk.example.com"
+      GATEWAY_RATE_LIMIT_MAX: "500"   # relaxed for staging load tests
+
+  market-data-service:
+    replicas: 1
+    hpa:
+      enabled: false
+
+  order-service:
+    replicas: 1
+    hpa:
+      enabled: false
+
+  risk-service:
+    replicas: 1
+    hpa:
+      enabled: false
+
+  notification-service:
+    replicas: 1
+    hpa:
+      enabled: false
+
+  trader-ui:
+    env:
+      VITE_API_BASE_URL: "https://api.staging.pulsedesk.example.com"
+      VITE_STREAM_URL: "wss://stream.staging.pulsedesk.example.com/stream"
+
+# Infrastructure endpoints for staging (point to dedicated staging releases or managed services)
+global:
+  kafka:
+    broker: "kafka-staging:9092"
+  postgres:
+    host: postgresql-staging
+  valkey:
+    host: valkey-staging

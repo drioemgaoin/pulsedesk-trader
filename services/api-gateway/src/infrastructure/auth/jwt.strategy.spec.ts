@@ -11,9 +11,9 @@ describe('Given a configured JwtStrategy', () => {
   });
 
   describe('when JWT_SECRET is not set in the environment', () => {
-    it('should construct without throwing', () => {
+    it('should throw to prevent startup with an unsigned token risk', () => {
       delete process.env['JWT_SECRET'];
-      expect(() => new JwtStrategy()).not.toThrow();
+      expect(() => new JwtStrategy()).toThrow('JWT_SECRET env var is required');
       process.env['JWT_SECRET'] = 'test-secret';
     });
   });

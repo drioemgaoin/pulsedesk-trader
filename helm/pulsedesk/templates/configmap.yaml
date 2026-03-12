@@ -1,0 +1,29 @@
+# Shared infrastructure configuration injected into every service via envFrom.
+# Non-sensitive values only — secrets go into the 'pulsedesk-secrets' Secret.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "pulsedesk.fullname" . }}-infra-config
+  labels:
+    {{ include "pulsedesk.labels" . | nindent 4 }}
+data:
+  NODE_ENV: {{ .Values.global.nodeEnv | quote }}
+  LOG_LEVEL: {{ .Values.global.logLevel | quote }}
+  SHUTDOWN_TIMEOUT_MS: {{ .Values.global.shutdownTimeoutMs | quote }}
+
+  # Kafka
+  KAFKA_BROKER: {{ .Values.global.kafka.broker | quote }}
+
+  # PostgreSQL (non-secret connection components)
+  POSTGRES_HOST: {{ .Values.global.postgres.host | quote }}
+  POSTGRES_PORT: {{ .Values.global.postgres.port | quote }}
+  POSTGRES_DB: {{ .Values.global.postgres.db | quote }}
+  POSTGRES_USER: {{ .Values.global.postgres.user | quote }}
+
+  # Valkey
+  VALKEY_HOST: {{ .Values.global.valkey.host | quote }}
+  VALKEY_PORT: {{ .Values.global.valkey.port | quote }}
+  VALKEY_URL: {{ printf "redis://%s:%s" .Values.global.valkey.host .Values.global.valkey.port | quote }}
+
+  # OpenTelemetry
+  OTEL_EXPORTER_OTLP_ENDPOINT: {{ .Values.global.otel.endpoint | quote }}

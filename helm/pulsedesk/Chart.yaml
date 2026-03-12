@@ -1,0 +1,11 @@
+apiVersion: v2
+name: pulsedesk
+description: PulseDesk Trading Platform — Kubernetes Helm chart (application services only)
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+# Infrastructure (PostgreSQL, Valkey, Kafka) is NOT bundled as sub-charts.
+# In production, use managed services (RDS, ElastiCache, MSK) or install
+# dedicated Helm releases separately — see docs/deployment-guide.md.
+# For local/staging evaluation use the provided docker-compose.yml instead.

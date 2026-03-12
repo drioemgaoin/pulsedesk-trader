@@ -1,0 +1,279 @@
+# ── PulseDesk Helm Values (default / production baseline) ────────────────────
+#
+# Override per environment:
+#   helm upgrade pulsedesk ./helm/pulsedesk -f helm/pulsedesk/values.staging.yaml
+#
+# Secrets are NEVER stored here — inject via external secret manager or:
+#   kubectl create secret generic pulsedesk-secrets --from-env-file=.env.prod
+
+# ── Global ────────────────────────────────────────────────────────────────────
+global:
+  imageRegistry: ghcr.io/pulsedesk
+  imageTag: latest
+  imagePullPolicy: IfNotPresent
+  nodeEnv: production
+  logLevel: info
+  shutdownTimeoutMs: "25000"
+
+  # Shared infrastructure endpoints (injected into every service via ConfigMap)
+  kafka:
+    broker: "kafka:9092"
+  postgres:
+    host: postgresql
+    port: "5432"
+    db: pulsedesk
+    user: pulsedesk
+  valkey:
+    host: valkey
+    port: "6379"
+  otel:
+    endpoint: "http://otel-collector:4318"
+
+# ── Ingress ───────────────────────────────────────────────────────────────────
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+  # api-gateway
+  apiHost: api.pulsedesk.example.com
+  # notification-service WebSocket
+  notificationHost: stream.pulsedesk.example.com
+  tls: []
+
+# ── Application services ──────────────────────────────────────────────────────
+#
+# Each service entry supports:
+#   enabled        bool    — include in release
+#   image          string  — image name (appended to global.imageRegistry)
+#   port           int     — container / service port
+#   replicas       int     — default replica count (overridden by HPA when enabled)
+#   resources      map     — requests/limits
+#   hpa            map     — HPA settings (enabled, min, max, targetCPU)
+#   env            map     — non-secret environment variables
+#   secretEnv      list    — keys to pull from the 'pulsedesk-secrets' Secret
+#   probeInitialDelaySeconds int — liveness/readiness probe start delay
+services:
+  api-gateway:
+    enabled: true
+    image: api-gateway
+    port: 3000
+    replicas: 2
+    probeInitialDelaySeconds: 20
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    hpa:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 70
+    env:
+      PORT: "3000"
+      OTEL_SERVICE_NAME: api-gateway
+      JWT_EXPIRY_SECONDS: "3600"
+      GATEWAY_RATE_LIMIT_MAX: "100"
+      GATEWAY_RATE_LIMIT_WINDOW_MS: "60000"
+      ORDER_SERVICE_URL: "http://order-service:3012"
+      PORTFOLIO_SERVICE_URL: "http://portfolio-service:3015"
+      MARKET_DATA_SERVICE_URL: "http://market-data-service:3011"
+      CORS_ORIGIN: "https://api.pulsedesk.example.com"
+    secretEnv:
+      - JWT_SECRET
+      - DEMO_USERNAME
+      - DEMO_PASSWORD
+      - INTERNAL_ORDER_API_KEY
+
+  market-data-service:
+    enabled: true
+    image: market-data-service
+    port: 3011
+    replicas: 1
+    probeInitialDelaySeconds: 20
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+    hpa:
+      enabled: true
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 75
+    env:
+      PORT: "3011"
+      OTEL_SERVICE_NAME: market-data-service
+      CORS_ORIGIN: "https://api.pulsedesk.example.com"
+      INTERNAL_TICK_API_KEY_REQUIRED: "true"
+    secretEnv:
+      - INTERNAL_TICK_API_KEY
+
+  order-service:
+    enabled: true
+    image: order-service
+    port: 3012
+    replicas: 2
+    probeInitialDelaySeconds: 30
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    hpa:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 70
+    env:
+      PORT: "3012"
+      OTEL_SERVICE_NAME: order-service
+      RISK_SERVICE_URL: "http://risk-service:3013"
+      RISK_SERVICE_TIMEOUT_MS: "2000"
+      KAFKA_TOPIC_ORDER_EVENTS: orders.events.v1
+      KAFKA_TOPIC_EXECUTION_EVENTS: execution.events.v1
+      KAFKA_CONSUMER_GROUP_EXECUTION_UPDATES: order-execution-updates
+    secretEnv:
+      - INTERNAL_ORDER_API_KEY
+      - DATABASE_URL
+
+  risk-service:
+    enabled: true
+    image: risk-service
+    port: 3013
+    replicas: 2
+    probeInitialDelaySeconds: 20
+    resources:
+      requests:
+        cpu: 100m
+        memory: 128Mi
+      limits:
+        cpu: 300m
+        memory: 256Mi
+    hpa:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 5
+      targetCPUUtilizationPercentage: 70
+    env:
+      PORT: "3013"
+      OTEL_SERVICE_NAME: risk-service
+      RISK_MAX_QUANTITY: "1000"
+      RISK_MAX_NOTIONAL: "100000"
+    secretEnv:
+      - INTERNAL_RISK_API_KEY
+      - DATABASE_URL
+
+  execution-service:
+    enabled: true
+    image: execution-service
+    port: 3014
+    replicas: 1
+    probeInitialDelaySeconds: 20
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+    hpa:
+      # Kafka consumer — scale based on consumer lag, not CPU; HPA disabled here.
+      # Use KEDA KafkaTopic trigger in production for partition-aware scaling.
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 75
+    env:
+      PORT: "3014"
+      OTEL_SERVICE_NAME: execution-service
+      KAFKA_TOPIC_ORDER_EVENTS: orders.events.v1
+      KAFKA_TOPIC_EXECUTION_EVENTS: execution.events.v1
+      KAFKA_TOPIC_MARKET_TICKS: market.ticks.v1
+      KAFKA_CONSUMER_GROUP_EXECUTION: execution-service
+      KAFKA_CONSUMER_GROUP_MARKET_PRICES: execution-market-prices
+    secretEnv: []
+
+  portfolio-service:
+    enabled: true
+    image: portfolio-service
+    port: 3015
+    replicas: 1
+    probeInitialDelaySeconds: 30
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+    hpa:
+      # Same note as execution-service — prefer KEDA for Kafka-consumer scaling.
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 3
+      targetCPUUtilizationPercentage: 75
+    env:
+      PORT: "3015"
+      OTEL_SERVICE_NAME: portfolio-service
+      KAFKA_TOPIC_EXECUTION_EVENTS: execution.events.v1
+      KAFKA_TOPIC_MARKET_TICKS: market.ticks.v1
+      KAFKA_CONSUMER_GROUP_PORTFOLIO: portfolio-service
+      KAFKA_CONSUMER_GROUP_MARKET_PRICES_PORTFOLIO: portfolio-market-prices
+    secretEnv:
+      - DATABASE_URL
+
+  notification-service:
+    enabled: true
+    image: notification-service
+    port: 3016
+    replicas: 2
+    probeInitialDelaySeconds: 20
+    resources:
+      requests:
+        cpu: 50m
+        memory: 128Mi
+      limits:
+        cpu: 200m
+        memory: 256Mi
+    hpa:
+      enabled: true
+      minReplicas: 2
+      maxReplicas: 4
+      targetCPUUtilizationPercentage: 70
+    env:
+      PORT: "3016"
+      OTEL_SERVICE_NAME: notification-service
+      CORS_ORIGIN: "https://api.pulsedesk.example.com"
+    secretEnv: []
+
+  trader-ui:
+    enabled: true
+    image: trader-ui
+    port: 5173
+    replicas: 1
+    probeInitialDelaySeconds: 10
+    resources:
+      requests:
+        cpu: 50m
+        memory: 64Mi
+      limits:
+        cpu: 100m
+        memory: 128Mi
+    hpa:
+      enabled: false
+      minReplicas: 1
+      maxReplicas: 2
+      targetCPUUtilizationPercentage: 80
+    env:
+      VITE_API_BASE_URL: "https://api.pulsedesk.example.com"
+      VITE_STREAM_URL: "wss://stream.pulsedesk.example.com/stream"
+    secretEnv: []

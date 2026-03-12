@@ -1,0 +1,16 @@
+PulseDesk Trading Platform — {{ .Chart.AppVersion }} deployed!
+
+API Gateway:
+  http{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.apiHost }}
+
+Notification (WebSocket):
+  ws{{ if .Values.ingress.tls }}s{{ end }}://{{ .Values.ingress.notificationHost }}/stream
+
+Verify rollout status:
+  kubectl rollout status deployment -n {{ .Release.Namespace }} --timeout=120s
+
+Rollback to previous release:
+  helm rollback {{ .Release.Name }} -n {{ .Release.Namespace }}
+
+View history:
+  helm history {{ .Release.Name }} -n {{ .Release.Namespace }}
