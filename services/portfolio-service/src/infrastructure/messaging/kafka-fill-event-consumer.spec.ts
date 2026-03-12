@@ -175,6 +175,52 @@ describe('KafkaFillEventConsumer', () => {
   });
 
   // -------------------------------------------------------------------------
+  // Field validation — malformed-but-parseable events (SEC-M8-T1-04)
+  // -------------------------------------------------------------------------
+
+  describe('when a JSON-valid message has an empty orderId', () => {
+    it('should skip processing and commit the offset (poison-pill)', async () => {
+      const useCase = makeUseCase();
+      const consumer = new KafkaFillEventConsumer(useCase as unknown as ProcessFillUseCase);
+      await consumer.onModuleInit();
+      await capturedHandler!(makeCtx(JSON.stringify(makeFillEvent({ orderId: '' }))));
+
+      expect(useCase.execute).not.toHaveBeenCalled();
+      expect(mockCommitOffsets).toHaveBeenCalledWith([
+        { topic: 'execution.events.v1', partition: 0, offset: '11' },
+      ]);
+    });
+  });
+
+  describe('when a JSON-valid message has an empty executionId', () => {
+    it('should skip processing and commit the offset (poison-pill)', async () => {
+      const useCase = makeUseCase();
+      const consumer = new KafkaFillEventConsumer(useCase as unknown as ProcessFillUseCase);
+      await consumer.onModuleInit();
+      await capturedHandler!(makeCtx(JSON.stringify(makeFillEvent({ executionId: '' }))));
+
+      expect(useCase.execute).not.toHaveBeenCalled();
+      expect(mockCommitOffsets).toHaveBeenCalledWith([
+        { topic: 'execution.events.v1', partition: 0, offset: '11' },
+      ]);
+    });
+  });
+
+  describe('when a JSON-valid message has a zero quantity', () => {
+    it('should skip processing and commit the offset (poison-pill)', async () => {
+      const useCase = makeUseCase();
+      const consumer = new KafkaFillEventConsumer(useCase as unknown as ProcessFillUseCase);
+      await consumer.onModuleInit();
+      await capturedHandler!(makeCtx(JSON.stringify(makeFillEvent({ filledQuantity: 0 })))); // zero → fails > 0 guard
+
+      expect(useCase.execute).not.toHaveBeenCalled();
+      expect(mockCommitOffsets).toHaveBeenCalledWith([
+        { topic: 'execution.events.v1', partition: 0, offset: '11' },
+      ]);
+    });
+  });
+
+  // -------------------------------------------------------------------------
   // Duplicate fill event handling (at-least-once re-delivery)
   // -------------------------------------------------------------------------
 

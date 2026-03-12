@@ -45,6 +45,22 @@ export class KafkaFillEventConsumer implements OnModuleInit, OnModuleDestroy {
           return;
         }
 
+        if (
+          typeof event.orderId !== 'string' || event.orderId.trim() === '' ||
+          typeof event.executionId !== 'string' || event.executionId.trim() === '' ||
+          typeof event.symbol !== 'string' || event.symbol.trim() === '' ||
+          typeof event.filledQuantity !== 'number' || event.filledQuantity <= 0
+        ) {
+          this.logger.error(
+            { topic, partition, offset: message.offset },
+            'Malformed fill event — skipping (poison-pill)',
+          );
+          await this.consumer.commitOffsets([
+            { topic, partition, offset: String(Number(message.offset) + 1) },
+          ]);
+          return;
+        }
+
         try {
           await this.processFill.execute(event);
         } catch (err) {

@@ -17,6 +17,12 @@ import type { FastifyRequest } from 'fastify';
 export class InternalApiKeyGuard implements CanActivate {
   private readonly apiKey = process.env['INTERNAL_TICK_API_KEY'];
 
+  constructor() {
+    if (!this.apiKey && process.env['NODE_ENV'] === 'production') {
+      throw new Error('INTERNAL_TICK_API_KEY env var is required in production');
+    }
+  }
+
   canActivate(context: ExecutionContext): boolean {
     if (!this.apiKey) return true;
     const req = context.switchToHttp().getRequest<FastifyRequest>();

@@ -28,9 +28,11 @@ async function bootstrap(): Promise<void> {
 
   // Security
   await app.register(fastifyHelmet);
-  await app.register(fastifyCors, {
-    origin: process.env['CORS_ORIGIN'] ?? '*',
-  });
+  const corsOrigin = process.env['CORS_ORIGIN'] ?? '*';
+  if (corsOrigin === '*' && process.env['NODE_ENV'] === 'production') {
+    throw new Error('CORS_ORIGIN must be set explicitly in production');
+  }
+  await app.register(fastifyCors, { origin: corsOrigin });
 
   // Correlation ID — generate if absent, echo back in response
   app

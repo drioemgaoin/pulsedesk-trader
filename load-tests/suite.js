@@ -28,11 +28,20 @@ import { getToken, authHeaders } from './scenarios/auth.js';
 
 const SYMBOLS = ['AAPL', 'MSFT', 'GOOGL', 'AMZN', 'TSLA'];
 
+function uuidv4() {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+
 function randomOrder() {
   return JSON.stringify({
+    commandId: uuidv4(),
+    accountId: ACCOUNT_ID,
     symbol:    SYMBOLS[Math.floor(Math.random() * SYMBOLS.length)],
     side:      Math.random() > 0.5 ? 'BUY' : 'SELL',
-    orderType: 'MARKET',
+    type:      'MARKET',
     quantity:  Math.floor(Math.random() * 10) + 1,
   });
 }

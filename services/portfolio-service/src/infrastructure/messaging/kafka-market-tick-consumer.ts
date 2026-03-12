@@ -29,6 +29,10 @@ export class KafkaMarketTickConsumer implements OnModuleInit, OnModuleDestroy {
         if (!message.value) return;
         try {
           const tick = JSON.parse(message.value.toString()) as MarketTickEvent;
+          if (typeof tick.symbol !== 'string' || tick.symbol.trim() === '' ||
+              typeof tick.last !== 'number' || !Number.isFinite(tick.last)) {
+            return; // malformed tick — skip silently
+          }
           this.priceCache.setPrice(tick.symbol, tick.last);
         } catch {
           // malformed tick — skip silently; price cache not updated
