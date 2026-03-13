@@ -6,10 +6,11 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:watch": "vite build --watch",
+    "preview": "vite preview",
     "lint": "eslint . --config eslint.config.js",
     "test": "vitest --run --passWithNoTests",
-    "test:watch": "vitest",
-    "preview": "vite preview --port 5176"
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@emotion/react": "^11.13.0",

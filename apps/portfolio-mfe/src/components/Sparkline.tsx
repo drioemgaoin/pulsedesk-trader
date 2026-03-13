@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { createChart, ColorType, LineStyle } from 'lightweight-charts';
+import { createChart, ColorType, LineStyle, AreaSeries } from 'lightweight-charts';
 
 interface SparklineProps {
   data: number[];
@@ -31,7 +31,7 @@ export function Sparkline({ data, width = 120, height = 40, color = '#26a69a' }:
       handleScale: false,
     });
 
-    const series = chart.addAreaSeries({
+    const series = chart.addSeries(AreaSeries, {
       lineColor: color,
       topColor: `${color}33`,
       bottomColor: `${color}00`,

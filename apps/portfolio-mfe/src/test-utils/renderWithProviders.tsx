@@ -7,14 +7,16 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 
 const theme = createTheme({ palette: { mode: 'dark' } });
 
+type AuthState = { token: string | null; accountId: string | null; username: string | null; status: string; error: null };
+
 interface StoreState {
-  auth: { token: string | null; accountId: string | null; username: string | null; status: string; error: null };
+  auth: AuthState;
 }
 
 function authReducer(
-  state = { token: 'test-token', accountId: 'acc-001', username: 'test', status: 'authenticated', error: null },
+  state: AuthState = { token: 'test-token', accountId: 'acc-001', username: 'test', status: 'authenticated', error: null },
   _action: { type: string },
-) {
+): AuthState {
   return state;
 }
 

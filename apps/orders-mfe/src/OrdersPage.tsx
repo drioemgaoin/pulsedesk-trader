@@ -18,7 +18,6 @@ import {
   DialogContent,
   DialogTitle,
   Drawer,
-  Hidden,
   IconButton,
   Paper,
   Skeleton,

@@ -8,15 +8,17 @@ import { createTheme } from '@mui/material/styles';
 
 const theme = createTheme({ palette: { mode: 'dark' } });
 
+type AuthState = { token: string | null; accountId: string | null; username: string | null; status: string; error: null };
+
 interface StoreState {
-  auth: { token: string | null; accountId: string | null; username: string | null; status: string; error: null };
+  auth: AuthState;
   terminal: { selectedSymbol: string; connectionStatus: string };
 }
 
 function authReducer(
-  state = { token: 'test-token', accountId: 'acc-001', username: 'test', status: 'authenticated', error: null },
+  state: AuthState = { token: 'test-token', accountId: 'acc-001', username: 'test', status: 'authenticated', error: null },
   action: { type: string; payload?: unknown },
-) {
+): AuthState {
   if (action.type === 'auth/logout') {
     return { ...state, token: null, accountId: null, username: null, status: 'unauthenticated', error: null };
   }

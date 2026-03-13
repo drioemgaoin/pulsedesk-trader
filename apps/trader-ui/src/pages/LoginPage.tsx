@@ -34,8 +34,10 @@ export default function LoginPage() {
     formState: { errors },
   } = useForm<LoginFormValues>({
     defaultValues: {
-      username: import.meta.env['VITE_DEMO_USERNAME'] ?? '',
-      password: import.meta.env['VITE_DEMO_PASSWORD'] ?? '',
+      // Pre-fill credentials only in local dev to speed up demos.
+      // NEVER set VITE_DEMO_USERNAME / VITE_DEMO_PASSWORD in production.
+      username: import.meta.env.DEV ? (import.meta.env['VITE_DEMO_USERNAME'] ?? '') : '',
+      password: import.meta.env.DEV ? (import.meta.env['VITE_DEMO_PASSWORD'] ?? '') : '',
     },
   });
 

@@ -21,7 +21,9 @@
   "scripts": {
     "dev": "pnpm --filter @pulsedesk/trader-ui dev",
     "dev:ui": "pnpm --filter @pulsedesk/trader-ui dev",
-    "dev:frontend": "concurrently --kill-others-on-fail --names \"trading,portfolio,orders,simulator,shell\" --prefix-colors \"cyan,green,yellow,magenta,blue\" \"pnpm --filter @pulsedesk/trading-mfe dev\" \"pnpm --filter @pulsedesk/portfolio-mfe dev\" \"pnpm --filter @pulsedesk/orders-mfe dev\" \"pnpm --filter @pulsedesk/simulator-mfe dev\" \"pnpm --filter @pulsedesk/trader-ui dev\"",
+    "dev:build-remotes": "pnpm --filter @pulsedesk/trading-mfe build && pnpm --filter @pulsedesk/portfolio-mfe build && pnpm --filter @pulsedesk/orders-mfe build && pnpm --filter @pulsedesk/simulator-mfe build",
+    "dev:serve": "concurrently --kill-others-on-fail --names \"t:watch,p:watch,o:watch,s:watch,t:preview,p:preview,o:preview,s:preview,shell\" --prefix-colors \"cyan,green,yellow,magenta,cyan,green,yellow,magenta,blue\" \"pnpm --filter @pulsedesk/trading-mfe build:watch\" \"pnpm --filter @pulsedesk/portfolio-mfe build:watch\" \"pnpm --filter @pulsedesk/orders-mfe build:watch\" \"pnpm --filter @pulsedesk/simulator-mfe build:watch\" \"pnpm --filter @pulsedesk/trading-mfe preview\" \"pnpm --filter @pulsedesk/portfolio-mfe preview\" \"pnpm --filter @pulsedesk/orders-mfe preview\" \"pnpm --filter @pulsedesk/simulator-mfe preview\" \"pnpm --filter @pulsedesk/trader-ui dev\"",
+    "dev:frontend": "pnpm dev:build-remotes && pnpm dev:serve",
     "build": "pnpm -r --filter './packages/*' build && pnpm -r --filter './services/*' --workspace-concurrency=1 build && pnpm -r --filter './apps/*' build",
     "lint": "pnpm -r --filter './packages/*' --filter './apps/*' --filter './services/*' lint",
     "test": "pnpm --filter @pulsedesk/contracts build && pnpm -r --filter './packages/*' --filter './apps/*' --filter './services/*' test",

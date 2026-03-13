@@ -1,7 +1,7 @@
-import { defineConfig } from 'vite';
+/// <reference types="vitest" />
+import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import federation from '@originjs/vite-plugin-federation';
-/// <reference types="vitest" />
 
 const shared = {
   react: { singleton: true, requiredVersion: '^19.0.0' },
@@ -34,11 +34,13 @@ export default defineConfig({
   preview: {
     port: 5176,
     strictPort: true,
+    cors: true,
   },
   build: {
-    target: 'es2020',
+    target: 'esnext',
     minify: false,
     cssCodeSplit: false,
+    emptyOutDir: false,
   },
   test: {
     environment: 'jsdom',

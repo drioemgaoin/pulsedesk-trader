@@ -10,7 +10,7 @@ export default function ProtectedRoute({ children }: ProtectedRouteProps) {
   const status = useSelector((s: RootState) => s.auth.status);
   const location = useLocation();
 
-  if (status === 'loading' || status === 'idle') {
+  if (status === 'loading') {
     return null;
   }
 

@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { createChart, ColorType, LineStyle } from 'lightweight-charts';
+import { createChart, ColorType, LineStyle, AreaSeries } from 'lightweight-charts';
 import { Box, Typography } from '@mui/material';
 import type { UTCTimestamp } from 'lightweight-charts';
 
@@ -37,7 +37,7 @@ export function PnlChart({ data, height = 140 }: PnlChartProps) {
       handleScale: false,
     });
 
-    const series = chart.addAreaSeries({
+    const series = chart.addSeries(AreaSeries, {
       lineColor: '#26a69a',
       topColor: '#26a69a33',
       bottomColor: '#26a69a00',

@@ -1,4 +1,5 @@
 import type { OrderSide, OrderStatus } from '../api/types';
+export type { OrderStatus };
 
 export const ALL_STATUSES: OrderStatus[] = [
   'PENDING',
