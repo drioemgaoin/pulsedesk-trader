@@ -145,7 +145,7 @@ export function BlotterPanel({ accountId }: BlotterPanelProps) {
               </TableRow>
             )}
             {orders.map((order) => (
-              <TableRow key={order.orderId} hover>
+              <TableRow key={order.id} hover>
                 <TableCell sx={{ color: 'text.secondary' }}>{formatTime(order.createdAt)}</TableCell>
                 <TableCell sx={{ fontWeight: 500 }}>{order.symbol}</TableCell>
                 <TableCell sx={{ color: order.side === 'BUY' ? 'trading.uptick' : 'trading.downtick', fontWeight: 500 }}>

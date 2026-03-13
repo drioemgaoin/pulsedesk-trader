@@ -35,7 +35,6 @@ export const theme = createTheme({
     background: {
       default: '#0a0a0a',
       paper: '#111111',
-      // @ts-expect-error — extended via module augmentation above
       elevated: '#1a1a1a',
     },
     divider: '#2a2a2a',

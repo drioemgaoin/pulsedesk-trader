@@ -9,7 +9,7 @@ const theme = createTheme({ palette: { mode: 'dark' } });
 
 function authReducer(
   state = { token: 'test-token', accountId: 'acc-001', username: 'test', status: 'authenticated', error: null },
-  _action: { type: string },
+  _: { type: string },
 ) {
   return state;
 }

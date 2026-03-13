@@ -31,7 +31,7 @@ describe('useOrdersQuery', () => {
       http.get('http://localhost:3000/api/v1/orders', () =>
         HttpResponse.json({
           orders: [
-            { orderId: 'ord-1', idempotencyKey: 'k1', accountId: 'acc-001', symbol: 'AAPL', side: 'BUY', type: 'MARKET', quantity: 10, status: 'FILLED', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+            { id: 'ord-1', commandId: 'cmd-1', accountId: 'acc-001', symbol: 'AAPL', side: 'BUY', type: 'MARKET', quantity: 10, status: 'FILLED', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
           ],
           pagination: { limit: 50, offset: 0, total: 1 },
         }),
@@ -43,7 +43,7 @@ describe('useOrdersQuery', () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
 
     expect(result.current.data?.orders).toHaveLength(1);
-    expect(result.current.data?.orders[0]?.orderId).toBe('ord-1');
+    expect(result.current.data?.orders[0]?.id).toBe('ord-1');
   });
 
   it('Given server error, When query runs, Should set error state', async () => {

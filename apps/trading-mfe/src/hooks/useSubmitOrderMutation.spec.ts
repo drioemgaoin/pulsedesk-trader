@@ -43,7 +43,7 @@ describe('useSubmitOrderMutation', () => {
     });
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
-    expect(result.current.data?.orderId).toBe('ord-001');
+    expect(result.current.data?.id).toBe('ord-001');
   });
 
   it('Given server error, When mutation fires, Should set error state', async () => {

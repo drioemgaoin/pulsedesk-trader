@@ -43,4 +43,43 @@ describe('WatchlistPanel', () => {
     const aaplRow = screen.getByRole('row', { name: /AAPL/i });
     expect(aaplRow).toHaveAttribute('aria-selected', 'true');
   });
+
+  it('Given isLoading=true and empty snapshot, When rendered, Should show skeleton placeholders', () => {
+    renderWithProviders(<WatchlistPanel snapshot={{}} status="connecting" isLoading={true} />);
+    // Skeleton renders inside the loading branch — no rows, no "waiting" text
+    expect(screen.queryByText(/waiting for market data/i)).not.toBeInTheDocument();
+  });
+
+  it('Given search that matches nothing, When user types non-matching filter, Should show no-match message', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<WatchlistPanel snapshot={snapshot} status="connected" />);
+    await user.type(screen.getByLabelText(/filter symbols/i), 'ZZZZ');
+    expect(screen.getByText(/no symbols match filter/i)).toBeInTheDocument();
+  });
+
+  it('Given a row is focused, When user presses Enter, Should dispatch setSelectedSymbol', () => {
+    const { store } = renderWithProviders(<WatchlistPanel snapshot={snapshot} status="connected" />);
+    const aaplRow = screen.getByRole('row', { name: /AAPL/i });
+    fireEvent.keyDown(aaplRow, { key: 'Enter' });
+    const state = store.getState() as { terminal: { selectedSymbol: string } };
+    expect(state.terminal.selectedSymbol).toBe('AAPL');
+  });
+
+  it('Given a row is focused, When user presses Space, Should dispatch setSelectedSymbol', () => {
+    const { store } = renderWithProviders(<WatchlistPanel snapshot={snapshot} status="connected" />);
+    const tslaRow = screen.getByRole('row', { name: /TSLA/i });
+    fireEvent.keyDown(tslaRow, { key: ' ' });
+    const state = store.getState() as { terminal: { selectedSymbol: string } };
+    expect(state.terminal.selectedSymbol).toBe('TSLA');
+  });
+
+  it('Given search input focused, When user presses Escape, Should clear the filter', async () => {
+    const user = userEvent.setup();
+    renderWithProviders(<WatchlistPanel snapshot={snapshot} status="connected" />);
+    const searchInput = screen.getByLabelText(/filter symbols/i);
+    await user.type(searchInput, 'AA');
+    expect(screen.queryByText('TSLA')).not.toBeInTheDocument();
+    await user.keyboard('{Escape}');
+    expect(screen.getByText('TSLA')).toBeInTheDocument();
+  });
 });

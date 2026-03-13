@@ -9,14 +9,14 @@ export type OrderStatus =
   | 'CANCELLED';
 
 export interface OrderResponseV1 {
-  orderId: string;
-  idempotencyKey: string;
+  id: string;
+  commandId: string;
   accountId: string;
   symbol: string;
   side: OrderSide;
   type: OrderType;
   quantity: number;
-  limitPrice?: number;
+  limitPrice?: number | null;
   status: OrderStatus;
   createdAt: string;
   updatedAt: string;
@@ -39,6 +39,7 @@ export interface PositionsResponseV1 {
   asOf: string;
 }
 
+// Internal frontend request type — idempotencyKey is mapped to commandId by useSubmitOrderMutation
 export interface SubmitOrderRequestV1 {
   idempotencyKey: string;
   accountId: string;
@@ -54,6 +55,16 @@ export interface OrdersPageV1 {
   pagination: { limit: number; offset: number; total: number };
 }
 
+export interface MarketQuoteV1 {
+  symbol: string;
+  bid: number;
+  ask: number;
+  last: number;
+  volume: number;
+  timestamp: string;
+}
+
 export interface WatchlistResponseV1 {
-  symbols: string[];
+  quotes: MarketQuoteV1[];
+  asOf: string;
 }

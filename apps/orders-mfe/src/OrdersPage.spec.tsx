@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { screen, waitFor, fireEvent, within } from '@testing-library/react';
+import { screen, waitFor, fireEvent } from '@testing-library/react';
 import { http, HttpResponse } from 'msw';
 import { server } from './mocks/server';
 import { renderWithProviders } from './test-utils/renderWithProviders';
@@ -7,8 +7,8 @@ import OrdersPage from './OrdersPage';
 import type { OrderResponseV1 } from './api/types';
 
 const makeOrder = (overrides: Partial<OrderResponseV1> = {}): OrderResponseV1 => ({
-  orderId: 'ord-001',
-  idempotencyKey: 'key-001',
+  id: 'ord-001',
+  commandId: 'cmd-001',
   accountId: 'acc-001',
   symbol: 'AAPL',
   side: 'BUY',
@@ -53,8 +53,8 @@ describe('Given no orders', () => {
 describe('Given orders exist', () => {
   beforeEach(() => {
     withOrders([
-      makeOrder({ orderId: 'ord-001', symbol: 'AAPL', side: 'BUY', status: 'FILLED' }),
-      makeOrder({ orderId: 'ord-002', symbol: 'TSLA', side: 'SELL', status: 'PENDING' }),
+      makeOrder({ id: 'ord-001', symbol: 'AAPL', side: 'BUY', status: 'FILLED' }),
+      makeOrder({ id: 'ord-002', symbol: 'TSLA', side: 'SELL', status: 'PENDING' }),
     ]);
   });
 
@@ -97,7 +97,7 @@ describe('Given 30 orders (more than one page)', () => {
 // ── Cancel mutation — optimistic update ──────────────────────────────────────
 describe('Given a PENDING order', () => {
   beforeEach(() => {
-    withOrders([makeOrder({ orderId: 'ord-cancel', status: 'PENDING', symbol: 'AAPL', quantity: 10 })]);
+    withOrders([makeOrder({ id: 'ord-cancel', status: 'PENDING', symbol: 'AAPL', quantity: 10 })]);
   });
 
   it('When cancel confirmed, Should open dialog and call cancel API', async () => {
@@ -105,7 +105,7 @@ describe('Given a PENDING order', () => {
     server.use(
       http.post('http://localhost:3000/api/v1/orders/ord-cancel/cancel', () => {
         cancelCalled = true;
-        return HttpResponse.json({ ...makeOrder({ orderId: 'ord-cancel', status: 'CANCELLED' }) });
+        return HttpResponse.json({ ...makeOrder({ id: 'ord-cancel', status: 'CANCELLED' }) });
       }),
     );
 
@@ -151,10 +151,9 @@ describe('Given an order row', () => {
   beforeEach(() => {
     withOrders([
       makeOrder({
-        orderId: 'full-uuid-12345678-abcd',
-        idempotencyKey: 'idem-key-xyz',
-        fillPrice: 160.47,
-        filledAt: '2024-06-01T10:01:00.000Z',
+        id: 'full-uuid-12345678-abcd',
+        commandId: 'cmd-key-xyz',
+        limitPrice: 160.47,
       }),
     ]);
   });
@@ -168,7 +167,7 @@ describe('Given an order row', () => {
     await waitFor(() =>
       expect(screen.getByText('full-uuid-12345678-abcd')).toBeInTheDocument(),
     );
-    expect(screen.getByText('idem-key-xyz')).toBeInTheDocument();
+    expect(screen.getByText('cmd-key-xyz')).toBeInTheDocument();
     expect(screen.getByText('$160.47')).toBeInTheDocument();
   });
 });

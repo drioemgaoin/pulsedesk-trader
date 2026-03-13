@@ -23,7 +23,7 @@ describe('BlotterPanel', () => {
       http.get('http://localhost:3000/api/v1/orders', () =>
         HttpResponse.json({
           orders: [
-            { orderId: 'ord-1', idempotencyKey: 'k1', accountId: 'acc-001', symbol: 'AAPL', side: 'BUY', type: 'MARKET', quantity: 10, status: 'FILLED', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
+            { id: 'ord-1', commandId: 'cmd-1', accountId: 'acc-001', symbol: 'AAPL', side: 'BUY', type: 'MARKET', quantity: 10, status: 'FILLED', createdAt: new Date().toISOString(), updatedAt: new Date().toISOString() },
           ],
           pagination: { limit: 50, offset: 0, total: 1 },
         }),

@@ -9,17 +9,15 @@ export type OrderStatus =
   | 'CANCELLED';
 
 export interface OrderResponseV1 {
-  orderId: string;
-  idempotencyKey: string;
+  id: string;
+  commandId: string;
   accountId: string;
   symbol: string;
   side: OrderSide;
   type: OrderType;
   quantity: number;
-  limitPrice?: number;
-  fillPrice?: number;
-  filledAt?: string;
-  rejectionReason?: string;
+  limitPrice?: number | null;
+  rejectionReason?: string | null;
   status: OrderStatus;
   createdAt: string;
   updatedAt: string;

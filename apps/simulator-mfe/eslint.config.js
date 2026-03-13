@@ -25,10 +25,14 @@ export default defineConfig([
         tsconfigRootDir: import.meta.dirname,
       },
     },
-  },
-  // Entry point — no HMR boundary needed; react-refresh doesn't apply here
-  {
-    files: ['src/main.tsx'],
-    rules: { 'react-refresh/only-export-components': 'off' },
+    rules: {
+      // Allow _-prefixed parameters/vars to be unused (common stub/reducer pattern)
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      // React Compiler rules (new in react-hooks v7) — warn rather than error
+      // These enforce React Compiler constraints which can be adopted progressively.
+      'react-hooks/static-components': 'warn',
+      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/refs': 'warn',
+    },
   },
 ])

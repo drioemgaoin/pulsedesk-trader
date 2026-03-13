@@ -19,7 +19,7 @@ export function useWatchlistQuery() {
     queryKey: ['watchlist'],
     queryFn: async () => {
       const res = await fetchApi<WatchlistResponseV1>('/api/v1/watchlist', token);
-      return res.symbols;
+      return res.quotes.map((q) => q.symbol);
     },
     staleTime: 1_000,
     refetchInterval: 2_000,

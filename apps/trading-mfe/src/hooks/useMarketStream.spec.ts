@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import type { Subject } from 'rxjs';
 
 // ── RxJS webSocket mock ──────────────────────────────────────────────────────
 let _subject: { next: (v: unknown) => void; error: (e: unknown) => void; complete: () => void };

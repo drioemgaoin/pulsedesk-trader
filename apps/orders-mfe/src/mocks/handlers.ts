@@ -9,8 +9,8 @@ export const handlers = [
 
   http.post(`${BASE}/api/v1/orders/:orderId/cancel`, ({ params }) =>
     HttpResponse.json({
-      orderId: params['orderId'],
-      idempotencyKey: 'key-001',
+      id: params['orderId'],
+      commandId: 'cmd-001',
       accountId: 'acc-001',
       symbol: 'AAPL',
       side: 'BUY',

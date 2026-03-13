@@ -31,7 +31,7 @@ export function useCancelOrderMutation() {
           return {
             ...old,
             orders: old.orders.map((o) =>
-              o.orderId === orderId ? { ...o, status: 'CANCELLED' as const } : o,
+              o.id === orderId ? { ...o, status: 'CANCELLED' as const } : o,
             ),
           };
         },

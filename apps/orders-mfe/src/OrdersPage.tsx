@@ -76,7 +76,7 @@ const columns = [
       </IconButton>
     ),
   }),
-  col.accessor('orderId', {
+  col.accessor('id', {
     header: 'Order ID',
     cell: ({ getValue }) => {
       const id = getValue();
@@ -116,20 +116,21 @@ const columns = [
     header: 'Submitted',
     cell: ({ getValue }) => format(new Date(getValue()), 'dd MMM yyyy HH:mm'),
   }),
-  col.accessor('filledAt', {
+  col.display({
+    id: 'fillTime',
     header: 'Fill Time',
-    cell: ({ getValue }) => {
-      const v = getValue();
-      return v ? format(new Date(v), 'dd MMM yyyy HH:mm') : '—';
+    cell: ({ row }) => {
+      if (row.original.status !== 'FILLED' && row.original.status !== 'PARTIALLY_FILLED') return '—';
+      return format(new Date(row.original.updatedAt), 'dd MMM yyyy HH:mm');
     },
   }),
   col.display({
     id: 'cancel',
     header: '',
     cell: ({ row }) => {
-      const { status, orderId, symbol, quantity } = row.original;
+      const { status, id, symbol, quantity } = row.original;
       if (status !== 'PENDING' && status !== 'ACCEPTED') return null;
-      return <CancelButton orderId={orderId} symbol={symbol} quantity={quantity} />;
+      return <CancelButton orderId={id} symbol={symbol} quantity={quantity} />;
     },
   }),
 ];
@@ -189,22 +190,16 @@ function RowDetail({ order }: { order: OrderResponseV1 }) {
       <Stack direction="row" flexWrap="wrap" gap={2}>
         <Box>
           <Typography variant="caption" color="text.secondary">Order ID</Typography>
-          <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>{order.orderId}</Typography>
+          <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>{order.id}</Typography>
         </Box>
         <Box>
-          <Typography variant="caption" color="text.secondary">Idempotency Key</Typography>
-          <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>{order.idempotencyKey}</Typography>
+          <Typography variant="caption" color="text.secondary">Command ID</Typography>
+          <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>{order.commandId}</Typography>
         </Box>
         {order.limitPrice != null && (
           <Box>
             <Typography variant="caption" color="text.secondary">Limit Price</Typography>
             <Typography variant="body2">${order.limitPrice.toFixed(2)}</Typography>
-          </Box>
-        )}
-        {order.fillPrice != null && (
-          <Box>
-            <Typography variant="caption" color="text.secondary">Fill Price</Typography>
-            <Typography variant="body2">${order.fillPrice.toFixed(2)}</Typography>
           </Box>
         )}
         {order.rejectionReason && (
@@ -235,7 +230,7 @@ export default function OrdersPage() {
   const table = useReactTable({
     data: orders,
     columns,
-    getRowId: (row) => row.orderId,
+    getRowId: (row) => row.id,
     getRowCanExpand: () => true,
     getCoreRowModel: getCoreRowModel(),
     getExpandedRowModel: getExpandedRowModel(),

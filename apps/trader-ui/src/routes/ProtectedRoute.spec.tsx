@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react';
 import { MemoryRouter, Routes, Route } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { configureStore } from '@reduxjs/toolkit';
-import authReducer, { setToken, logout } from '../store/authSlice';
+import authReducer, { setToken, logout, loginThunk } from '../store/authSlice';
 import terminalReducer from '../store/terminalSlice';
 import ProtectedRoute from './ProtectedRoute';
 
@@ -48,12 +48,19 @@ describe('ProtectedRoute', () => {
     expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
   });
 
-  it('renders nothing when status is loading', () => {
+  it('redirects to /login when status is idle', () => {
+    // idle = fresh page load with no token; should redirect to /login immediately
     const store = makeStore();
-    // status starts as idle then we artificially leave it in loading by dispatching pending action
-    // Instead, we test with idle (which also returns null)
+    renderWithAuth(store);
+    expect(screen.getByText('Login Page')).toBeInTheDocument();
+    expect(screen.queryByText('Protected Content')).not.toBeInTheDocument();
+  });
+
+  it('renders nothing when status is loading', () => {
+    // loading = loginThunk in-flight; render null until it resolves
+    const store = makeStore();
+    store.dispatch(loginThunk.pending('', { username: '', password: '' }));
     const { container } = renderWithAuth(store);
-    // idle renders null — container has no text content
     expect(container.textContent).toBe('');
   });
 });
