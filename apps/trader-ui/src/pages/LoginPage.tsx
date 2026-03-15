@@ -7,7 +7,7 @@ import {
   Box,
   Button,
   CircularProgress,
-  Paper,
+  Divider,
   TextField,
   Typography,
 } from '@mui/material';
@@ -22,20 +22,14 @@ interface LoginFormValues {
 }
 
 export default function LoginPage() {
-  useDocumentTitle('Login');
+  useDocumentTitle('Sign In — PulseDesk Trader');
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { status, error, token } = useSelector((s: RootState) => s.auth);
 
-  const {
-    register,
-    handleSubmit,
-    formState: { errors },
-  } = useForm<LoginFormValues>({
+  const { register, handleSubmit, formState: { errors } } = useForm<LoginFormValues>({
     defaultValues: {
-      // Pre-fill credentials only in local dev to speed up demos.
-      // NEVER set VITE_DEMO_USERNAME / VITE_DEMO_PASSWORD in production.
       username: import.meta.env.DEV ? (import.meta.env['VITE_DEMO_USERNAME'] ?? '') : '',
       password: import.meta.env.DEV ? (import.meta.env['VITE_DEMO_PASSWORD'] ?? '') : '',
     },
@@ -62,71 +56,106 @@ export default function LoginPage() {
         alignItems: 'center',
         justifyContent: 'center',
         bgcolor: 'background.default',
+        /* Subtle grid pattern for depth */
+        backgroundImage: (t) =>
+          `radial-gradient(${t.palette.divider} 1px, transparent 1px)`,
+        backgroundSize: '28px 28px',
       }}
     >
-      <Paper
+      <Box
         component="main"
-        sx={{ p: 4, width: '100%', maxWidth: 400 }}
         aria-label="Login form"
+        sx={{
+          width: '100%',
+          maxWidth: 400,
+          bgcolor: 'background.paper',
+          border: 1,
+          borderColor: 'divider',
+          borderRadius: 2,
+          overflow: 'hidden',
+        }}
       >
-        <Typography variant="h5" component="h1" gutterBottom>
-          PulseDesk Trader
-        </Typography>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
-          Sign in to your trading account
-        </Typography>
+        {/* Gold accent top bar */}
+        <Box sx={{ height: 3, bgcolor: 'primary.main', width: '100%' }} />
 
-        {sessionExpired && (
-          <Alert severity="warning" sx={{ mb: 2 }}>
-            Your session expired. Please sign in again.
-          </Alert>
-        )}
+        <Box sx={{ p: 4 }}>
+          {/* Wordmark */}
+          <Box sx={{ mb: 3 }}>
+            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, mb: 1 }}>
+              <Typography
+                component="span"
+                sx={{ fontSize: '1.375rem', fontWeight: 400, letterSpacing: '-0.02em', color: 'text.primary' }}
+              >
+                Pulse
+              </Typography>
+              <Typography
+                component="span"
+                sx={{ fontSize: '1.375rem', fontWeight: 700, letterSpacing: '-0.02em', color: 'primary.main' }}
+              >
+                Desk
+              </Typography>
+              <Typography
+                component="span"
+                sx={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.14em', color: 'text.secondary', ml: 0.75 }}
+              >
+                TRADER
+              </Typography>
+            </Box>
+            <Typography variant="body2" color="text.secondary">
+              Professional-grade order execution platform
+            </Typography>
+          </Box>
 
-        {error && (
-          <Alert severity="error" sx={{ mb: 2 }} role="alert">
-            {error}
-          </Alert>
-        )}
+          <Divider sx={{ mb: 3 }} />
 
-        <Box
-          component="form"
-          onSubmit={handleSubmit(onSubmit)}
-          noValidate
-          aria-label="Sign in"
-        >
-          <TextField
-            {...register('username', { required: 'Username is required' })}
-            label="Username"
-            fullWidth
-            autoComplete="username"
-            autoFocus
-            error={!!errors.username}
-            helperText={errors.username?.message}
-            sx={{ mb: 2 }}
-            inputProps={{ 'aria-label': 'Username' }}
-          />
-          <TextField
-            {...register('password', { required: 'Password is required' })}
-            label="Password"
-            type="password"
-            fullWidth
-            autoComplete="current-password"
-            error={!!errors.password}
-            helperText={errors.password?.message}
-            sx={{ mb: 3 }}
-            inputProps={{ 'aria-label': 'Password' }}
-          />
-          <Button
-            type="submit"
-            variant="contained"
-            fullWidth
-            disabled={status === 'loading'}
-            startIcon={status === 'loading' ? <CircularProgress size={16} /> : null}
-          >
-            {status === 'loading' ? 'Signing in…' : 'Sign in'}
-          </Button>
+          {sessionExpired && (
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              Your session expired. Please sign in again.
+            </Alert>
+          )}
+
+          {error && (
+            <Alert severity="error" sx={{ mb: 2 }} role="alert">
+              {error}
+            </Alert>
+          )}
+
+          <Box component="form" onSubmit={handleSubmit(onSubmit)} noValidate aria-label="Sign in">
+            <TextField
+              {...register('username', { required: 'Username is required' })}
+              label="Username"
+              fullWidth
+              autoComplete="username"
+              autoFocus
+              error={!!errors.username}
+              helperText={errors.username?.message}
+              sx={{ mb: 2 }}
+              inputProps={{ 'aria-label': 'Username' }}
+            />
+            <TextField
+              {...register('password', { required: 'Password is required' })}
+              label="Password"
+              type="password"
+              fullWidth
+              autoComplete="current-password"
+              error={!!errors.password}
+              helperText={errors.password?.message}
+              sx={{ mb: 3 }}
+              inputProps={{ 'aria-label': 'Password' }}
+            />
+            <Button
+              type="submit"
+              variant="contained"
+              fullWidth
+              disabled={status === 'loading'}
+              startIcon={status === 'loading' ? <CircularProgress size={15} color="inherit" /> : null}
+              sx={{ height: 48, fontWeight: 700, letterSpacing: '0.04em' }}
+            >
+              {status === 'loading' ? 'Signing in…' : 'Sign In'}
+            </Button>
+          </Box>
         </Box>
-      </Paper>
+      </Box>
     </Box>
   );
 }

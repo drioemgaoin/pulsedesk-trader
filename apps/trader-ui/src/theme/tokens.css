@@ -1,0 +1,249 @@
+/**
+ * PulseDesk Design Token System
+ * ═══════════════════════════════════════════════════════════════════
+ *
+ * Architecture: Two-layer token system (standard at Linear, Vercel, Stripe, GitHub)
+ *
+ *   Layer 1 — Primitive tokens  (--pd-p-*)
+ *     Raw values: HSL colors, sizes, radii. Never reference directly in
+ *     components or theme.ts. Only Layer 2 tokens alias these.
+ *
+ *   Layer 2 — Semantic tokens  (--pd-*)
+ *     Purpose-driven aliases. These are the tokens components & theme.ts use.
+ *     When a user reports "the buy button color looks wrong", search DevTools
+ *     for `--pd-status-up` and fix it here. No component code changes needed.
+ *
+ * ┌─────────────────────────────────────────────────────────────────────┐
+ * │  To add a new theme (e.g. "high-contrast"):                         │
+ * │  1. Add [data-theme="high-contrast"] { ... } below.                 │
+ * │  2. Map every --pd-* semantic token to a new value.                 │
+ * │  3. Add "high-contrast" to THEME_MODES in themeSlice.               │
+ * │  Zero component or theme.ts changes required.                       │
+ * └─────────────────────────────────────────────────────────────────────┘
+ *
+ * Brand archetype: Sage/Ruler — amber precision, Bloomberg heritage
+ *
+ * Why amber? "PulseDesk" → Bloomberg's amber-on-black CRT (40 yrs of
+ * trader muscle memory), gold = wealth/value signal, and amber sidesteps
+ * semantic collision with green (BUY/gain) and red (SELL/loss).
+ * Using Tailwind's high-saturation amber scale prevents the brownish
+ * degradation of earlier desaturated gold attempts.
+ */
+
+/* ─────────────────────────────────────────────────────────────────────
+   LAYER 1 — PRIMITIVES
+   Never reference in components. Think of these as the color palette.
+   ───────────────────────────────────────────────────────────────────── */
+:root {
+  /* Navy scale */
+  --pd-p-navy-950:  #070B14;
+  --pd-p-navy-900:  #0D1321;
+  --pd-p-navy-800:  #162033;
+  --pd-p-navy-700:  #1E2D45;
+  --pd-p-navy-600:  #2A3D58;
+  --pd-p-navy-500:  #3A4F6A;
+  --pd-p-navy-400:  #4A6080;
+  --pd-p-navy-300:  #6A84A0;
+  --pd-p-navy-200:  #8A9BB5;
+  --pd-p-navy-100:  #B4C0D0;
+
+  /* Parchment scale (light mode surfaces) */
+  --pd-p-parchment-50:  #FAFAF7;
+  --pd-p-parchment-100: #F4F1EB;
+  --pd-p-parchment-200: #EDE9E0;
+  --pd-p-parchment-300: #DDD8CC;
+  --pd-p-parchment-400: #C8C0AE;
+  --pd-p-parchment-500: #ADA490;
+
+  /* Amber scale (Pulse accent — Bloomberg heritage, financial precision, live data)
+   *
+   * Why amber, not teal?
+   *   • Bloomberg Terminal's amber-on-black is 40 yrs of trader muscle memory.
+   *   • Gold = wealth/value signal — immediately legible in finance.
+   *   • Green & red are owned by BUY/SELL/gains/losses. Amber avoids semantic
+   *     collision between "brand selection" and "market direction".
+   *   • High-saturation Tailwind amber stays visually amber at any contrast
+   *     level — no brownish degradation that plagued desaturated golds.
+   */
+  --pd-p-amber-300: #FCD34D;  /* Highlight tint on dark surfaces */
+  --pd-p-amber-400: #FBBF24;  /* Dark mode hover  */
+  --pd-p-amber-500: #F59E0B;  /* Dark mode primary — contrast ~7:1 on navy-900 */
+  --pd-p-amber-600: #D97706;  /* Dark mode dark / light mode hover */
+  --pd-p-amber-700: #B45309;  /* Light mode primary — contrast ~4.9:1 on parchment-50 */
+  --pd-p-amber-800: #92400E;  /* Light mode dark (pressed) */
+  --pd-p-amber-900: #78350F;  /* Deep variant */
+
+  /* Blue scale (Sage secondary — intelligence, data depth) */
+  --pd-p-blue-300:  #7AB4E8;
+  --pd-p-blue-400:  #5FA0DE;
+  --pd-p-blue-500:  #4A90D9;  /* Dark mode secondary */
+  --pd-p-blue-600:  #3578C4;
+  --pd-p-blue-700:  #2B5EA7;  /* Light mode secondary */
+  --pd-p-blue-800:  #1E4A87;
+
+  /* Status: Up (green) */
+  --pd-p-green-400: #52C27D;
+  --pd-p-green-500: #3DAA6A;
+  --pd-p-green-600: #2A8F55;
+  --pd-p-green-700: #1A7A42;
+
+  /* Status: Down (red) */
+  --pd-p-red-400:   #E87870;
+  --pd-p-red-500:   #D95E52;
+  --pd-p-red-600:   #C04840;
+  --pd-p-red-700:   #A83530;
+
+  /* Status: Pending (amber) */
+  --pd-p-amber-400: #F0B060;
+  --pd-p-amber-500: #E0963A;
+  --pd-p-amber-600: #C07020;
+  --pd-p-amber-700: #9E5818;
+
+  /* Neutrals */
+  --pd-p-white: #FFFFFF;
+  --pd-p-black: #000000;
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────
+   LAYER 2 — SEMANTIC TOKENS: DARK THEME (default)
+   This is what you search for when debugging a reported color issue.
+   ───────────────────────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  /* ── Surfaces ── */
+  --pd-bg-canvas:      var(--pd-p-navy-950);   /* Page background */
+  --pd-bg-surface:     var(--pd-p-navy-900);   /* Cards, panels */
+  --pd-bg-raised:      var(--pd-p-navy-800);   /* Elevated surfaces, tooltips */
+  --pd-bg-overlay:     var(--pd-p-navy-900);   /* Dialogs, popovers */
+
+  /* ── Borders ── */
+  --pd-border-subtle:  var(--pd-p-navy-700);   /* Dividers, panel edges */
+  --pd-border-default: var(--pd-p-navy-600);   /* Input borders, card borders */
+  --pd-border-strong:  var(--pd-p-navy-500);   /* Focused inputs, emphasis */
+
+  /* ── Text ── */
+  --pd-text-primary:   #E8EDF5;                /* Body text, labels */
+  --pd-text-secondary: var(--pd-p-navy-200);   /* Subtitles, placeholders */
+  --pd-text-muted:     var(--pd-p-navy-400);   /* Disabled, de-emphasized */
+  --pd-text-on-accent: var(--pd-p-navy-950);   /* Text on teal bg */
+
+  /* ── Accent: Amber (Pulse — financial precision, primary actions) ── */
+  --pd-accent-primary:       var(--pd-p-amber-500);
+  --pd-accent-primary-hover: var(--pd-p-amber-400);
+  --pd-accent-primary-muted:        rgba(245, 158, 11, 0.12);
+  --pd-accent-primary-muted-strong: rgba(245, 158, 11, 0.22); /* Selected+hover ToggleButton */
+  --pd-accent-primary-dark:  var(--pd-p-amber-600);
+
+  /* ── Accent: Blue (Sage — intelligence, secondary actions) ── */
+  --pd-accent-secondary:       var(--pd-p-blue-500);
+  --pd-accent-secondary-hover: var(--pd-p-blue-400);
+  --pd-accent-secondary-muted: rgba(74, 144, 217, 0.12);
+
+  /* ── Trading status colors ── */
+  --pd-status-up:      var(--pd-p-green-500);  /* BUY, gains, uptick */
+  --pd-status-up-muted:   rgba(61, 170, 106, 0.12);
+  --pd-status-down:    var(--pd-p-red-500);    /* SELL, losses, downtick */
+  --pd-status-down-muted: rgba(217, 94, 82, 0.12);
+  --pd-status-pending: var(--pd-p-amber-500);  /* PENDING orders */
+  --pd-status-neutral: var(--pd-p-navy-400);   /* Cancelled, no change */
+
+  /* ── Interactive states ── */
+  --pd-hover:    rgba(255, 255, 255, 0.04);    /* Row hover, nav hover */
+  --pd-selected: rgba(245, 158, 11, 0.10);     /* Selected row, active nav */
+  --pd-focus:    rgba(245, 158, 11, 0.28);     /* Focus ring inset */
+  --pd-disabled: rgba(255, 255, 255, 0.06);    /* Disabled backgrounds */
+
+  /* ── Decorative ── */
+  --pd-appbar-border:  rgba(245, 158, 11, 0.14); /* Subtle amber shimmer on header */
+  --pd-scrollbar-thumb: var(--pd-p-navy-700);
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────
+   LAYER 2 — SEMANTIC TOKENS: LIGHT THEME
+   ───────────────────────────────────────────────────────────────────── */
+[data-theme="light"] {
+  /* ── Surfaces ── */
+  --pd-bg-canvas:      var(--pd-p-parchment-100); /* Page background */
+  --pd-bg-surface:     var(--pd-p-parchment-50);  /* Cards, panels */
+  --pd-bg-raised:      var(--pd-p-white);          /* Elevated surfaces */
+  --pd-bg-overlay:     var(--pd-p-white);          /* Dialogs */
+
+  /* ── Borders ── */
+  --pd-border-subtle:  var(--pd-p-parchment-300);
+  --pd-border-default: var(--pd-p-parchment-400);
+  --pd-border-strong:  var(--pd-p-parchment-500);
+
+  /* ── Text ── */
+  --pd-text-primary:   #0E1520;
+  --pd-text-secondary: #4A5A72;
+  --pd-text-muted:     #9BA8BC;
+  --pd-text-on-accent: var(--pd-p-white);
+
+  /* ── Accent: Amber (Pulse) ── */
+  --pd-accent-primary:       var(--pd-p-amber-700);
+  --pd-accent-primary-hover: var(--pd-p-amber-600);
+  --pd-accent-primary-muted:        rgba(180, 83, 9, 0.09);
+  --pd-accent-primary-muted-strong: rgba(180, 83, 9, 0.17); /* Selected+hover ToggleButton */
+  --pd-accent-primary-dark:  var(--pd-p-amber-800);
+
+  /* ── Accent: Blue (Sage) ── */
+  --pd-accent-secondary:       var(--pd-p-blue-700);
+  --pd-accent-secondary-hover: var(--pd-p-blue-600);
+  --pd-accent-secondary-muted: rgba(43, 94, 167, 0.08);
+
+  /* ── Trading status colors ── */
+  --pd-status-up:      var(--pd-p-green-700);
+  --pd-status-up-muted:   rgba(26, 122, 66, 0.10);
+  --pd-status-down:    var(--pd-p-red-700);
+  --pd-status-down-muted: rgba(168, 53, 48, 0.10);
+  --pd-status-pending: var(--pd-p-amber-600);
+  --pd-status-neutral: var(--pd-p-navy-400);
+
+  /* ── Interactive states ── */
+  --pd-hover:    rgba(0, 0, 0, 0.04);
+  --pd-selected: rgba(180, 83, 9, 0.09);
+  --pd-focus:    rgba(180, 83, 9, 0.24);
+  --pd-disabled: rgba(0, 0, 0, 0.05);
+
+  /* ── Decorative ── */
+  --pd-appbar-border:  rgba(180, 83, 9, 0.14);
+  --pd-scrollbar-thumb: var(--pd-p-parchment-400);
+}
+
+
+/* ─────────────────────────────────────────────────────────────────────
+   GLOBAL BASE STYLES
+   Applied on top of MUI CssBaseline.
+   ───────────────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Thin, themed scrollbar (Webkit) */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--pd-scrollbar-thumb, #2A3D58);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--pd-border-strong, #3A4F6A);
+}
+
+/* Tabular numerics for any element that will display market data */
+.pd-numeric {
+  font-variant-numeric: tabular-nums;
+  font-family: 'JetBrains Mono', 'Fira Code', monospace;
+}

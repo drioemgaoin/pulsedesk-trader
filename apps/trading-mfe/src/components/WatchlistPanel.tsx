@@ -1,5 +1,12 @@
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
-import { useDispatch, useSelector } from 'react-redux';
+import {
+  forwardRef,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
+import { useDispatch, useSelector } from "react-redux";
 import {
   Box,
   InputAdornment,
@@ -12,14 +19,16 @@ import {
   TextField,
   Tooltip,
   Typography,
-} from '@mui/material';
-import SearchIcon from '@mui/icons-material/Search';
-import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
-import type { MarketTick, WatchlistSnapshot, WsStatus } from '../hooks/useMarketStream';
-import type { ShellState } from '../types/store';
-import { setSelectedSymbol } from '../store/terminalActions';
+} from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
+import type {
+  MarketTick,
+  WatchlistSnapshot,
+} from "../hooks/useMarketStream";
+import type { ShellState } from "../types/store";
+import { setSelectedSymbol } from "../store/terminalActions";
 
-type FlashDir = 'up' | 'down' | null;
+type FlashDir = "up" | "down" | null;
 
 function useTickFlash(snapshot: WatchlistSnapshot): Record<string, FlashDir> {
   const prevRef = useRef<Record<string, number>>({});
@@ -30,7 +39,7 @@ function useTickFlash(snapshot: WatchlistSnapshot): Record<string, FlashDir> {
     for (const [sym, tick] of Object.entries(snapshot)) {
       const prev = prevRef.current[sym];
       if (prev !== undefined && tick.last !== prev) {
-        updates[sym] = tick.last > prev ? 'up' : 'down';
+        updates[sym] = tick.last > prev ? "up" : "down";
       }
       prevRef.current[sym] = tick.last;
     }
@@ -53,146 +62,191 @@ function useTickFlash(snapshot: WatchlistSnapshot): Record<string, FlashDir> {
   return flash;
 }
 
-const WS_STATUS_COLOR: Record<WsStatus, 'success' | 'warning' | 'disabled'> = {
-  connected: 'success',
-  connecting: 'warning',
-  reconnecting: 'warning',
-};
-
-const WS_STATUS_LABEL: Record<WsStatus, string> = {
-  connected: 'Live',
-  connecting: 'Connecting…',
-  reconnecting: 'Reconnecting…',
-};
+/** Compact volume: 5 000 000 → 5.0M, 125 000 → 125K */
+function fmtVol(v: number): string {
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
+  if (v >= 1_000) return `${Math.round(v / 1_000)}K`;
+  return v.toString();
+}
 
 interface WatchlistPanelProps {
   snapshot: WatchlistSnapshot;
-  status: WsStatus;
   isLoading?: boolean;
 }
 
-export function WatchlistPanel({ snapshot, status, isLoading }: WatchlistPanelProps) {
+export interface WatchlistPanelHandle {
+  focusSearch(): void;
+}
+
+export const WatchlistPanel = forwardRef<
+  WatchlistPanelHandle,
+  WatchlistPanelProps
+>(function WatchlistPanel({ snapshot, isLoading }, ref) {
   const dispatch = useDispatch();
-  const selectedSymbol = useSelector((s: ShellState) => s.terminal.selectedSymbol);
-  const [search, setSearch] = useState('');
+  const selectedSymbol = useSelector(
+    (s: ShellState) => s.terminal.selectedSymbol,
+  );
+  const [search, setSearch] = useState("");
   const flash = useTickFlash(snapshot);
   const searchRef = useRef<HTMLInputElement>(null);
   const rowRefs = useRef<(HTMLTableRowElement | null)[]>([]);
 
-  const allTicks = Object.values(snapshot).sort((a, b) => a.symbol.localeCompare(b.symbol));
+  useImperativeHandle(ref, () => ({
+    focusSearch: () => searchRef.current?.focus(),
+  }));
+
+  const allTicks = Object.values(snapshot).sort((a, b) =>
+    a.symbol.localeCompare(b.symbol),
+  );
   const ticks = search
     ? allTicks.filter((t) => t.symbol.startsWith(search.toUpperCase()))
     : allTicks;
 
-  const handleSelect = (symbol: string) => {
-    dispatch(setSelectedSymbol(symbol));
-  };
+  const handleSelect = (symbol: string) => dispatch(setSelectedSymbol(symbol));
 
-  function handleRowKeyDown(e: KeyboardEvent<HTMLTableRowElement>, tick: MarketTick, idx: number) {
-    if (e.key === 'Enter' || e.key === ' ') {
+  function handleRowKeyDown(
+    e: KeyboardEvent<HTMLTableRowElement>,
+    tick: MarketTick,
+    idx: number,
+  ) {
+    if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
       handleSelect(tick.symbol);
-    } else if (e.key === 'ArrowDown') {
+    } else if (e.key === "ArrowDown") {
       e.preventDefault();
       rowRefs.current[idx + 1]?.focus();
-    } else if (e.key === 'ArrowUp') {
+    } else if (e.key === "ArrowUp") {
       e.preventDefault();
       if (idx === 0) searchRef.current?.focus();
       else rowRefs.current[idx - 1]?.focus();
-    } else if (e.key === 'Escape') {
-      setSearch('');
+    } else if (e.key === "Escape") {
+      setSearch("");
       searchRef.current?.focus();
     }
   }
 
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
-      {/* Header */}
+    <Box sx={{ display: "flex", flexDirection: "column", height: "100%" }}>
+      {/* ── Header — search field ── */}
       <Box
         sx={{
-          px: 2,
+          px: 1,
           py: 1,
           borderBottom: 1,
-          borderColor: 'divider',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 1,
+          borderColor: "divider",
           flexShrink: 0,
         }}
       >
-        <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-          Watchlist
-        </Typography>
-        <Tooltip title={WS_STATUS_LABEL[status]}>
-          <FiberManualRecordIcon
-            color={WS_STATUS_COLOR[status]}
-            sx={{ fontSize: 8 }}
-            aria-label={WS_STATUS_LABEL[status]}
-          />
-        </Tooltip>
         <TextField
           inputRef={searchRef}
           size="small"
-          placeholder="Filter…"
+          placeholder="Filter symbols…"
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           onKeyDown={(e) => {
-            if (e.key === 'Escape') setSearch('');
-            if (e.key === 'ArrowDown') {
+            if (e.key === "Escape") setSearch("");
+            if (e.key === "ArrowDown") {
               e.preventDefault();
               rowRefs.current[0]?.focus();
             }
           }}
-          inputProps={{ 'aria-label': 'Filter symbols' }}
+          inputProps={{ "aria-label": "Filter symbols" }}
           InputProps={{
             startAdornment: (
               <InputAdornment position="start">
-                <SearchIcon sx={{ fontSize: 14, color: 'text.disabled' }} />
+                <SearchIcon sx={{ fontSize: 13, color: "text.disabled" }} />
               </InputAdornment>
             ),
           }}
-          sx={{ ml: 'auto', width: 100 }}
+          fullWidth
         />
       </Box>
 
-      {/* Body */}
-      <Box sx={{ flex: 1, overflow: 'auto' }}>
+      {/* ── Body ── */}
+      <Box sx={{ flex: 1, overflow: "auto" }}>
         {isLoading && ticks.length === 0 ? (
-          <Box sx={{ p: 2 }}>
+          <Box sx={{ p: 1.5 }}>
             {[1, 2, 3, 4, 5].map((i) => (
-              <Skeleton key={i} height={28} sx={{ mb: 0.5 }} />
+              <Skeleton key={i} height={26} sx={{ mb: 0.5 }} />
             ))}
           </Box>
         ) : ticks.length === 0 ? (
-          <Typography variant="caption" color="text.secondary" sx={{ display: 'block', p: 2 }}>
-            {search ? 'No symbols match filter.' : 'Waiting for market data…'}
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ display: "block", p: 2 }}
+          >
+            {search ? "No symbols match." : "Waiting for market data…"}
           </Typography>
         ) : (
-          <Table size="small" aria-label="Watchlist" role="grid">
+          <Table
+            size="small"
+            aria-label="Watchlist"
+            role="grid"
+            sx={{
+              '& .MuiTableBody-root .MuiTableCell-root': {
+                height: 44,
+                py: 0,
+                verticalAlign: 'middle',
+              },
+            }}
+          >
             <TableHead>
               <TableRow>
-                <TableCell>Symbol</TableCell>
-                <TableCell align="right">Bid</TableCell>
-                <TableCell align="right">Ask</TableCell>
-                <TableCell align="right">Last</TableCell>
-                <TableCell align="right">Vol</TableCell>
+                <TableCell
+                  sx={{
+                    fontSize: "0.625rem",
+                    fontWeight: 700,
+                    letterSpacing: "0.07em",
+                    textTransform: "uppercase",
+                    color: "text.disabled",
+                    py: 1,
+                  }}
+                >
+                  Symbol
+                </TableCell>
+                <TableCell
+                  align="right"
+                  sx={{
+                    fontSize: "0.625rem",
+                    fontWeight: 700,
+                    letterSpacing: "0.07em",
+                    textTransform: "uppercase",
+                    color: "text.disabled",
+                    py: 1,
+                  }}
+                >
+                  Last
+                </TableCell>
+                <TableCell
+                  align="right"
+                  sx={{
+                    fontSize: "0.625rem",
+                    fontWeight: 700,
+                    letterSpacing: "0.07em",
+                    textTransform: "uppercase",
+                    color: "text.disabled",
+                    py: 1,
+                    display: { xs: 'none', sm: 'table-cell' },
+                  }}
+                >
+                  <Tooltip title="Total shares traded today" placement="top">
+                    <span>Vol</span>
+                  </Tooltip>
+                </TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {ticks.map((tick, idx) => {
                 const isSelected = tick.symbol === selectedSymbol;
                 const dir = flash[tick.symbol] ?? null;
-                const flashColor =
-                  dir === 'up'
-                    ? 'trading.uptick'
-                    : dir === 'down'
-                    ? 'trading.downtick'
-                    : 'text.primary';
 
                 return (
                   <TableRow
                     key={tick.symbol}
-                    ref={(el) => { rowRefs.current[idx] = el; }}
+                    ref={(el) => {
+                      rowRefs.current[idx] = el;
+                    }}
                     role="row"
                     aria-selected={isSelected}
                     tabIndex={0}
@@ -201,27 +255,49 @@ export function WatchlistPanel({ snapshot, status, isLoading }: WatchlistPanelPr
                     selected={isSelected}
                     hover
                     sx={{
-                      cursor: 'pointer',
-                      outline: 'none',
-                      '&:focus-visible': { boxShadow: (t) => `inset 0 0 0 2px ${t.palette.primary.main}` },
+                      cursor: "pointer",
+                      outline: "none",
+                      borderLeft: "3px solid",
+                      borderLeftColor: isSelected ? "primary.main" : "transparent",
+                      "&:focus-visible": {
+                        outline: "none",
+                        boxShadow: (t) =>
+                          `inset 0 0 0 2px ${t.palette.primary.main}`,
+                      },
                     }}
                   >
-                    <TableCell sx={{ fontWeight: 500 }}>{tick.symbol}</TableCell>
-                    <TableCell align="right" sx={{ color: flashColor, fontVariantNumeric: 'tabular-nums', transition: 'color 0.6s' }}>
-                      {tick.bid.toFixed(2)}
-                    </TableCell>
-                    <TableCell align="right" sx={{ color: flashColor, fontVariantNumeric: 'tabular-nums', transition: 'color 0.6s' }}>
-                      {tick.ask.toFixed(2)}
+                    <TableCell
+                      sx={{ fontWeight: 700, fontSize: "0.875rem" }}
+                    >
+                      {tick.symbol}
                     </TableCell>
                     <TableCell
                       align="right"
-                      sx={{ color: flashColor, fontWeight: 500, fontVariantNumeric: 'tabular-nums', transition: 'color 0.6s' }}
-                      aria-label={`${tick.symbol} last price ${tick.last.toFixed(2)}, ${dir === 'up' ? 'up' : dir === 'down' ? 'down' : 'unchanged'}`}
+                      sx={{
+                        fontWeight: 600,
+                        fontVariantNumeric: "tabular-nums",
+                        transition: "color 0.6s",
+                        color:
+                          dir === "up"
+                            ? "trading.uptick"
+                            : dir === "down"
+                              ? "trading.downtick"
+                              : "text.primary",
+                      }}
+                      aria-label={`${tick.symbol} last price ${tick.last.toFixed(2)}`}
                     >
                       {tick.last.toFixed(2)}
                     </TableCell>
-                    <TableCell align="right" sx={{ color: 'text.secondary', fontVariantNumeric: 'tabular-nums' }}>
-                      {tick.volume.toLocaleString()}
+                    <TableCell
+                      align="right"
+                      sx={{
+                        color: "text.disabled",
+                        fontVariantNumeric: "tabular-nums",
+                        fontSize: "0.75rem",
+                        display: { xs: 'none', sm: 'table-cell' },
+                      }}
+                    >
+                      {fmtVol(tick.volume)}
                     </TableCell>
                   </TableRow>
                 );
@@ -232,4 +308,4 @@ export function WatchlistPanel({ snapshot, status, isLoading }: WatchlistPanelPr
       </Box>
     </Box>
   );
-}
+});

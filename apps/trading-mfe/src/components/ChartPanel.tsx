@@ -1,7 +1,15 @@
-import { useEffect, useRef, useState } from 'react';
-import { createChart, ColorType, LineSeries, type IChartApi, type ISeriesApi, type Time } from 'lightweight-charts';
-import { Box, Typography } from '@mui/material';
-import type { MarketTick, WsStatus } from '../hooks/useMarketStream';
+import { useEffect, useRef, useState } from "react";
+import {
+  createChart,
+  ColorType,
+  LineSeries,
+  type IChartApi,
+  type ISeriesApi,
+  type Time,
+} from "lightweight-charts";
+import { Box, Chip, Typography, useTheme } from "@mui/material";
+import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
+import type { MarketTick, WsStatus } from "../hooks/useMarketStream";
 
 interface ChartPanelProps {
   symbol: string | null;
@@ -16,32 +24,60 @@ function toUnixSeconds(iso: string): number {
 }
 
 export function ChartPanel({ symbol, tick, streamStatus }: ChartPanelProps) {
+  const theme = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
-  const seriesRef = useRef<ISeriesApi<'Line', Time> | null>(null);
+  const seriesRef = useRef<ISeriesApi<"Line", Time> | null>(null);
   const pointsRef = useRef<{ time: number; value: number }[]>([]);
-  const [prices, setPrices] = useState<{ last: number | null; prev: number | null }>({
+  const [prices, setPrices] = useState<{
+    last: number | null;
+    prev: number | null;
+  }>({
     last: null,
     prev: null,
   });
 
+  // Recreate chart when symbol changes OR when the theme mode toggles
   useEffect(() => {
     if (!containerRef.current || !symbol) return;
 
+    const bg = theme.palette.background.default;
+    const grid = theme.palette.divider;
+    const txt = theme.palette.text.secondary;
+    const line = theme.palette.primary.main;
+
     const chart = createChart(containerRef.current, {
-      layout: { background: { type: ColorType.Solid, color: '#0a0a0a' }, textColor: '#888888' },
-      grid: { vertLines: { color: '#2a2a2a' }, horzLines: { color: '#2a2a2a' } },
-      crosshair: { vertLine: { color: '#444444' }, horzLine: { color: '#444444' } },
-      timeScale: { borderColor: '#2a2a2a', timeVisible: true, secondsVisible: false },
-      rightPriceScale: { borderColor: '#2a2a2a' },
+      layout: {
+        background: { type: ColorType.Solid, color: bg },
+        textColor: txt,
+      },
+      grid: { vertLines: { color: grid }, horzLines: { color: grid } },
+      crosshair: {
+        vertLine: {
+          color: theme.palette.text.disabled,
+          labelBackgroundColor: theme.palette.background.paper,
+        },
+        horzLine: {
+          color: theme.palette.text.disabled,
+          labelBackgroundColor: theme.palette.background.paper,
+        },
+      },
+      timeScale: {
+        borderColor: grid,
+        timeVisible: true,
+        secondsVisible: false,
+      },
+      rightPriceScale: { borderColor: grid },
       width: containerRef.current.clientWidth,
       height: containerRef.current.clientHeight,
     });
 
     const series = chart.addSeries(LineSeries, {
-      color: '#00bcd4',
+      color: line,
       lineWidth: 2,
+      priceLineColor: line,
       priceLineVisible: true,
+      lastValueVisible: true,
     });
 
     chartRef.current = chart;
@@ -65,7 +101,8 @@ export function ChartPanel({ symbol, tick, streamStatus }: ChartPanelProps) {
       chartRef.current = null;
       seriesRef.current = null;
     };
-  }, [symbol]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [symbol, theme.palette.mode]);
 
   useEffect(() => {
     if (!tick || !seriesRef.current || tick.symbol !== symbol) return;
@@ -78,73 +115,203 @@ export function ChartPanel({ symbol, tick, streamStatus }: ChartPanelProps) {
 
     if (points.length >= MAX_POINTS) points.shift();
     points.push(point);
-    seriesRef.current.update(point as Parameters<typeof seriesRef.current.update>[0]);
+    seriesRef.current.update(
+      point as Parameters<typeof seriesRef.current.update>[0],
+    );
 
-    queueMicrotask(() => setPrices((p) => ({ prev: p.last ?? tick.last, last: tick.last })));
+    queueMicrotask(() =>
+      setPrices((p) => ({ prev: p.last ?? tick.last, last: tick.last })),
+    );
   }, [tick, symbol]);
 
   const { last: lastPrice, prev: prevPrice } = prices;
-  const priceColor =
+  const priceDir =
     lastPrice !== null && prevPrice !== null
       ? lastPrice > prevPrice
-        ? 'trading.uptick'
+        ? "up"
         : lastPrice < prevPrice
-        ? 'trading.downtick'
-        : 'text.primary'
-      : 'text.primary';
+          ? "down"
+          : "flat"
+      : "flat";
+
+  const priceColor =
+    priceDir === "up"
+      ? "trading.uptick"
+      : priceDir === "down"
+        ? "trading.downtick"
+        : "text.primary";
+
+  const priceDelta =
+    lastPrice !== null && prevPrice !== null && prevPrice !== 0
+      ? ((lastPrice - prevPrice) / prevPrice) * 100
+      : null;
+
+  const isStale = streamStatus === "reconnecting";
 
   if (!symbol) {
     return (
-      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', bgcolor: 'background.default' }}>
-        <Typography variant="caption" color="text.disabled">
-          Select a symbol from the watchlist
+      <Box
+        sx={{
+          display: "flex",
+          flexDirection: "column",
+          alignItems: "center",
+          justifyContent: "center",
+          height: "100%",
+          gap: 1,
+          bgcolor: "background.default",
+        }}
+      >
+        <Typography variant="body2" color="text.disabled">
+          Select a symbol to view chart
         </Typography>
       </Box>
     );
   }
 
+  // No header bar — chart fills 100% of the panel.
+  // Overlays replace the old header so no vertical space is wasted.
   return (
-    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', bgcolor: 'background.default' }}>
-      <Box
-        sx={{
-          px: 2,
-          py: 1,
-          borderBottom: 1,
-          borderColor: 'divider',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 2,
-          flexShrink: 0,
-        }}
-      >
-        <Typography variant="body2" sx={{ fontWeight: 600 }}>
+    <Box
+      sx={{
+        position: "relative",
+        height: "100%",
+        bgcolor: "background.default",
+      }}
+    >
+      <div
+        ref={containerRef}
+        style={{ width: "100%", height: "100%" }}
+        aria-hidden="true"
+      />
+
+      {/* Symbol + delta + live status — top-left context anchor */}
+      <Box sx={{ position: 'absolute', top: 12, left: 12, zIndex: 2, pointerEvents: 'none', display: 'flex', alignItems: 'center', gap: 1.5 }}>
+        <Typography
+          sx={{
+            fontSize: '1rem',
+            fontWeight: 800,
+            letterSpacing: '0.02em',
+            color: 'text.primary',
+            lineHeight: 1,
+            bgcolor: 'background.default',
+            px: 1,
+            py: 0.5,
+            borderRadius: 0.5,
+            opacity: 0.92,
+          }}
+        >
           {symbol}
         </Typography>
-        {lastPrice !== null && (
-          <Typography variant="body2" sx={{ color: priceColor, fontVariantNumeric: 'tabular-nums', fontWeight: 500 }}>
-            {lastPrice.toFixed(2)}
+        {priceDelta !== null && (
+          <Typography
+            sx={{
+              fontSize: '0.875rem',
+              fontWeight: 700,
+              color: priceColor,
+              fontVariantNumeric: 'tabular-nums',
+              transition: 'color 0.4s',
+              bgcolor: 'background.default',
+              px: 1,
+              py: 0.5,
+              borderRadius: 0.5,
+              opacity: 0.92,
+              lineHeight: 1,
+            }}
+          >
+            {priceDelta >= 0 ? '+' : ''}{priceDelta.toFixed(3)}%
           </Typography>
         )}
-        {streamStatus === 'reconnecting' && (
-          <Typography variant="caption" color="warning.main" sx={{ ml: 'auto' }}>
-            Stream paused
-          </Typography>
-        )}
-      </Box>
-
-      <Box sx={{ flex: 1, position: 'relative', minHeight: 0 }}>
-        {lastPrice === null && (
-          <Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1 }}>
-            <Typography variant="caption" color="text.disabled">
-              Waiting for first tick…
+        {/* LIVE badge — only when connected and receiving data */}
+        {streamStatus === 'connected' && lastPrice !== null && (
+          <Box
+            sx={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 0.5,
+              bgcolor: 'background.default',
+              px: 1,
+              py: 0.5,
+              borderRadius: 0.5,
+              opacity: 0.92,
+            }}
+          >
+            <FiberManualRecordIcon
+              sx={{
+                fontSize: 7,
+                color: 'success.main',
+                animation: 'livePulse 2s ease-in-out infinite',
+                '@keyframes livePulse': {
+                  '0%, 100%': { opacity: 1 },
+                  '50%': { opacity: 0.4 },
+                },
+              }}
+            />
+            <Typography
+              sx={{
+                fontSize: '0.625rem',
+                fontWeight: 700,
+                letterSpacing: '0.08em',
+                color: 'success.main',
+                lineHeight: 1,
+              }}
+            >
+              LIVE
             </Typography>
           </Box>
         )}
-        <div ref={containerRef} style={{ width: '100%', height: '100%' }} aria-hidden="true" />
-        <div role="status" aria-live="polite" aria-atomic="true" className="sr-only">
-          {symbol} last price{lastPrice !== null ? `: ${lastPrice.toFixed(2)}` : ' pending'}
-        </div>
       </Box>
+
+      {/* Waiting for first tick */}
+      {lastPrice === null && (
+        <Box
+          sx={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            zIndex: 1,
+            pointerEvents: "none",
+          }}
+        >
+          <Typography variant="caption" color="text.disabled">
+            Waiting for first tick…
+          </Typography>
+        </Box>
+      )}
+
+      {/* STALE badge — top-right */}
+      {isStale && (
+        <Box sx={{ position: "absolute", top: 8, right: 10, zIndex: 2 }}>
+          <Chip
+            label="STALE"
+            size="small"
+            color="warning"
+            sx={{
+              fontSize: "0.625rem",
+              height: 18,
+              fontWeight: 700,
+              letterSpacing: "0.06em",
+              animation: "pulse 1.5s ease-in-out infinite",
+              "@keyframes pulse": {
+                "0%, 100%": { opacity: 1 },
+                "50%": { opacity: 0.45 },
+              },
+            }}
+          />
+        </Box>
+      )}
+
+      {/* Screen-reader live region */}
+      <div
+        role="status"
+        aria-live="polite"
+        aria-atomic="true"
+        className="sr-only"
+      >
+        {symbol} last price
+        {lastPrice !== null ? `: ${lastPrice.toFixed(2)}` : " pending"}
+      </div>
     </Box>
   );
 }

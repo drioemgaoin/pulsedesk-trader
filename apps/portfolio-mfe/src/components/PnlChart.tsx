@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
+import { useTheme } from '@mui/material';
 import { createChart, ColorType, LineStyle, AreaSeries } from 'lightweight-charts';
-import { Box, Typography } from '@mui/material';
 import type { UTCTimestamp } from 'lightweight-charts';
 
 export interface PnlPoint {
@@ -15,24 +15,29 @@ interface PnlChartProps {
 
 export function PnlChart({ data, height = 140 }: PnlChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const theme = useTheme();
 
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
 
+    const bg = theme.palette.background.paper;
+    const textColor = theme.palette.text.secondary;
+    const gridColor = theme.palette.divider;
+
     const chart = createChart(el, {
       width: el.clientWidth || 600,
       height,
       layout: {
-        background: { type: ColorType.Solid, color: '#0a0a0a' },
-        textColor: '#9e9e9e',
+        background: { type: ColorType.Solid, color: bg },
+        textColor,
       },
       grid: {
-        vertLines: { color: '#1e1e1e', style: LineStyle.Dotted },
-        horzLines: { color: '#1e1e1e', style: LineStyle.Dotted },
+        vertLines: { color: gridColor, style: LineStyle.Dotted },
+        horzLines: { color: gridColor, style: LineStyle.Dotted },
       },
-      rightPriceScale: { borderColor: '#2e2e2e' },
-      timeScale: { borderColor: '#2e2e2e', timeVisible: true },
+      rightPriceScale: { borderColor: gridColor },
+      timeScale: { borderColor: gridColor, timeVisible: true },
       handleScroll: false,
       handleScale: false,
     });
@@ -60,14 +65,7 @@ export function PnlChart({ data, height = 140 }: PnlChartProps) {
       ro.disconnect();
       chart.remove();
     };
-  }, [data, height]);
+  }, [data, height, theme.palette.mode]);
 
-  return (
-    <Box>
-      <Typography variant="caption" color="text.secondary" sx={{ px: 1 }}>
-        Aggregate Unrealized P&L (last 5 min)
-      </Typography>
-      <div ref={containerRef} style={{ width: '100%', height }} />
-    </Box>
-  );
+  return <div ref={containerRef} style={{ width: '100%', height }} />;
 }

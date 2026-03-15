@@ -9,6 +9,8 @@ import {
 import { format } from 'date-fns';
 import {
   Alert,
+  Autocomplete,
+  Badge,
   Box,
   Button,
   Chip,
@@ -30,24 +32,23 @@ import {
   TableHead,
   TablePagination,
   TableRow,
+  TextField,
+  ToggleButton,
+  ToggleButtonGroup,
   Tooltip,
   Typography,
-  useMediaQuery,
-  useTheme,
 } from '@mui/material';
 import CancelIcon from '@mui/icons-material/Cancel';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DownloadIcon from '@mui/icons-material/Download';
 import FilterListIcon from '@mui/icons-material/FilterList';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
 import { useOrdersQuery, PAGE_SIZE } from './hooks/useOrdersQuery';
 import { useCancelOrderMutation } from './hooks/useCancelOrderMutation';
 import { FilterPanel } from './components/FilterPanel';
-import { DEFAULT_FILTERS, hasActiveFilters } from './lib/filters';
+import { DEFAULT_FILTERS, hasActiveFilters, ALL_STATUSES, KNOWN_SYMBOLS } from './lib/filters';
 import { downloadOrdersCsv } from './lib/csvExport';
-import type { OrderFilters } from './lib/filters';
-import type { OrderResponseV1, OrderStatus } from './api/types';
+import type { OrderFilters, OrderStatus } from './lib/filters';
+import type { OrderResponseV1 } from './api/types';
 
 // ── Status chip colours ───────────────────────────────────────────────────────
 const STATUS_COLOURS: Record<OrderStatus, 'default' | 'warning' | 'info' | 'success' | 'error'> = {
@@ -59,23 +60,20 @@ const STATUS_COLOURS: Record<OrderStatus, 'default' | 'warning' | 'info' | 'succ
   CANCELLED: 'default',
 };
 
+// Count active "secondary" filters (symbols, side, dates — not status chips)
+function countSecondaryFilters(f: OrderFilters): number {
+  return (
+    f.symbols.length +
+    (f.side !== 'ALL' ? 1 : 0) +
+    (f.dateFrom ? 1 : 0) +
+    (f.dateTo ? 1 : 0)
+  );
+}
+
 // ── Column helper ─────────────────────────────────────────────────────────────
 const col = createColumnHelper<OrderResponseV1>();
 
 const columns = [
-  col.display({
-    id: 'expand',
-    header: '',
-    cell: ({ row }) => (
-      <IconButton
-        size="small"
-        onClick={row.getToggleExpandedHandler()}
-        aria-label={row.getIsExpanded() ? 'collapse row' : 'expand row'}
-      >
-        {row.getIsExpanded() ? <KeyboardArrowUpIcon fontSize="small" /> : <KeyboardArrowDownIcon fontSize="small" />}
-      </IconButton>
-    ),
-  }),
   col.accessor('id', {
     header: 'Order ID',
     cell: ({ getValue }) => {
@@ -92,7 +90,7 @@ const columns = [
             <IconButton
               size="small"
               aria-label={`copy order id ${id}`}
-              onClick={() => void navigator.clipboard.writeText(id)}
+              onClick={(e) => { e.stopPropagation(); void navigator.clipboard.writeText(id); }}
             >
               <ContentCopyIcon sx={{ fontSize: 12 }} />
             </IconButton>
@@ -101,15 +99,33 @@ const columns = [
       );
     },
   }),
-  col.accessor('symbol', { header: 'Symbol' }),
-  col.accessor('side', { header: 'Side' }),
+  col.accessor('symbol', {
+    header: 'Symbol',
+    cell: ({ getValue }) => (
+      <Typography variant="body2" sx={{ fontWeight: 600 }}>{getValue()}</Typography>
+    ),
+  }),
+  col.accessor('side', {
+    header: 'Side',
+    cell: ({ getValue }) => {
+      const side = getValue();
+      return (
+        <Typography
+          variant="body2"
+          sx={{ fontWeight: 700, color: side === 'BUY' ? 'trading.uptick' : 'trading.downtick' }}
+        >
+          {side}
+        </Typography>
+      );
+    },
+  }),
   col.accessor('type', { header: 'Type' }),
   col.accessor('quantity', { header: 'Qty', meta: { align: 'right' } }),
   col.accessor('status', {
     header: 'Status',
     cell: ({ getValue }) => {
       const s = getValue();
-      return <Chip label={s} size="small" color={STATUS_COLOURS[s] ?? 'default'} />;
+      return <Chip label={s} size="small" color={STATUS_COLOURS[s] ?? 'default'} sx={{ fontSize: '0.625rem', height: 18, fontWeight: 700, letterSpacing: '0.03em' }} />;
     },
   }),
   col.accessor('createdAt', {
@@ -130,7 +146,11 @@ const columns = [
     cell: ({ row }) => {
       const { status, id, symbol, quantity } = row.original;
       if (status !== 'PENDING' && status !== 'ACCEPTED') return null;
-      return <CancelButton orderId={id} symbol={symbol} quantity={quantity} />;
+      return (
+        <Box onClick={(e) => e.stopPropagation()}>
+          <CancelButton orderId={id} symbol={symbol} quantity={quantity} />
+        </Box>
+      );
     },
   }),
 ];
@@ -186,8 +206,8 @@ function CancelButton({ orderId, symbol, quantity }: { orderId: string; symbol: 
 // ── Expandable row detail ─────────────────────────────────────────────────────
 function RowDetail({ order }: { order: OrderResponseV1 }) {
   return (
-    <Box sx={{ px: 4, py: 1, bgcolor: 'background.default' }}>
-      <Stack direction="row" flexWrap="wrap" gap={2}>
+    <Box sx={{ px: 4, py: 2, bgcolor: 'background.default', borderLeft: '3px solid', borderLeftColor: 'divider' }}>
+      <Stack direction="row" flexWrap="wrap" gap={3}>
         <Box>
           <Typography variant="caption" color="text.secondary">Order ID</Typography>
           <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>{order.id}</Typography>
@@ -215,9 +235,6 @@ function RowDetail({ order }: { order: OrderResponseV1 }) {
 
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function OrdersPage() {
-  const theme = useTheme();
-  const isLarge = useMediaQuery(theme.breakpoints.up('lg'));
-
   const [page, setPage] = useState(0);
   const [filters, setFilters] = useState<OrderFilters>(DEFAULT_FILTERS);
   const [drawerOpen, setDrawerOpen] = useState(false);
@@ -226,6 +243,7 @@ export default function OrdersPage() {
 
   const orders = data?.orders ?? [];
   const total = data?.pagination.total ?? 0;
+  const secondaryCount = countSecondaryFilters(filters);
 
   const table = useReactTable({
     data: orders,
@@ -240,153 +258,347 @@ export default function OrdersPage() {
 
   function handleFiltersChange(next: OrderFilters) {
     setFilters(next);
-    setPage(0); // reset to page 1 on filter change
+    setPage(0);
   }
 
-  const filterPanel = (
-    <FilterPanel filters={filters} onChange={handleFiltersChange} />
-  );
+  function toggleStatus(status: OrderStatus) {
+    const next = filters.statuses.includes(status)
+      ? filters.statuses.filter((s) => s !== status)
+      : [...filters.statuses, status];
+    handleFiltersChange({ ...filters, statuses: next });
+  }
 
   return (
-    <Box sx={{ display: 'flex', height: '100%', overflow: 'hidden' }}>
-      {/* Inline sidebar on lg+ */}
-      {isLarge && (
-        <Box
-          sx={{
-            width: 240,
-            borderRight: 1,
-            borderColor: 'divider',
-            overflowY: 'auto',
-            flexShrink: 0,
-          }}
-        >
-          {filterPanel}
-        </Box>
-      )}
+    <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden', p: 2, gap: 2 }}>
 
-      {/* Drawer on smaller screens */}
-      <Drawer
-        anchor="left"
-        open={drawerOpen}
-        onClose={() => setDrawerOpen(false)}
-        PaperProps={{ sx: { width: 280 } }}
+      {/* ── Page header ── */}
+      <Stack direction="row" alignItems="center" spacing={2}>
+        <Typography variant="h5" component="h1" tabIndex={-1} sx={{ flex: 1 }}>
+          Orders
+        </Typography>
+
+        <Tooltip title="Export CSV">
+          <span>
+            <IconButton
+              aria-label="export orders as CSV"
+              onClick={() => downloadOrdersCsv(orders)}
+              disabled={orders.length === 0}
+            >
+              <DownloadIcon />
+            </IconButton>
+          </span>
+        </Tooltip>
+      </Stack>
+
+      {/* ── Filter bar ── */}
+      <Stack
+        direction="row"
+        alignItems="center"
+        flexWrap="wrap"
+        gap={1}
+        sx={{
+          p: 1.5,
+          borderRadius: 1,
+          border: 1,
+          borderColor: 'divider',
+          bgcolor: 'background.paper',
+        }}
       >
-        {filterPanel}
-      </Drawer>
+        {/* Status chips — primary filter, always visible */}
+        {ALL_STATUSES.map((s) => (
+          <Chip
+            key={s}
+            label={s === 'PARTIALLY_FILLED' ? 'PARTIAL' : s}
+            size="small"
+            color={filters.statuses.includes(s) ? STATUS_COLOURS[s] ?? 'default' : 'default'}
+            variant={filters.statuses.includes(s) ? 'filled' : 'outlined'}
+            onClick={() => toggleStatus(s)}
+            aria-pressed={filters.statuses.includes(s)}
+          />
+        ))}
 
-      {/* Main content */}
-      <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', p: 2 }}>
-        <Stack direction="row" alignItems="center" spacing={1} sx={{ mb: 2 }}>
-          <Typography variant="h5" component="h1" tabIndex={-1} sx={{ flex: 1 }}>
-            Orders
-          </Typography>
+        <Box sx={{ flex: 1 }} />
 
-          {/* Filter toggle on smaller screens */}
-          {!isLarge && (
-            <Tooltip title="Filters">
-              <IconButton aria-label="open filters" onClick={() => setDrawerOpen(true)}>
-                <FilterListIcon />
-              </IconButton>
-            </Tooltip>
-          )}
-
-          <Tooltip title="Export CSV">
-            <span>
-              <IconButton
-                aria-label="export orders as CSV"
-                onClick={() => downloadOrdersCsv(orders)}
-                disabled={orders.length === 0}
-              >
-                <DownloadIcon />
-              </IconButton>
-            </span>
-          </Tooltip>
-        </Stack>
-
-        {/* Error */}
-        {isError && (
-          <Alert severity="error" sx={{ mb: 2 }}>
-            Failed to load orders{error instanceof Error ? `: ${error.message}` : ''}
-          </Alert>
+        {/* Clear all — only when filters are active */}
+        {hasActiveFilters(filters) && (
+          <Button
+            size="small"
+            variant="text"
+            onClick={() => handleFiltersChange(DEFAULT_FILTERS)}
+            aria-label="clear filters"
+            sx={{ minWidth: 'auto', px: 1 }}
+          >
+            Clear
+          </Button>
         )}
 
-        {/* Table */}
-        <TableContainer component={Paper} variant="outlined" sx={{ flex: 1, overflow: 'auto' }}>
-          <Table size="small" aria-label="orders table" stickyHeader>
-            <TableHead>
-              {table.getHeaderGroups().map((hg) => (
-                <TableRow key={hg.id}>
-                  {hg.headers.map((header) => (
-                    <TableCell key={header.id}>
-                      {header.isPlaceholder
-                        ? null
-                        : flexRender(header.column.columnDef.header, header.getContext())}
+        {/* More filters — symbols, side, dates */}
+        <Tooltip title={secondaryCount > 0 ? `${secondaryCount} more filter${secondaryCount > 1 ? 's' : ''} active` : 'More filters'}>
+          <IconButton
+            size="small"
+            aria-label="open filters"
+            onClick={() => setDrawerOpen(true)}
+            color={secondaryCount > 0 ? 'primary' : 'default'}
+          >
+            <Badge badgeContent={secondaryCount || undefined} color="primary">
+              <FilterListIcon fontSize="small" />
+            </Badge>
+          </IconButton>
+        </Tooltip>
+      </Stack>
+
+      {/* ── Error ── */}
+      {isError && (
+        <Alert severity="error">
+          Failed to load orders{error instanceof Error ? `: ${error.message}` : ''}
+        </Alert>
+      )}
+
+      {/* ── Table ── */}
+      <TableContainer component={Paper} variant="outlined" sx={{ flex: 1, overflow: 'auto' }}>
+        <Table
+          size="small"
+          aria-label="orders table"
+          stickyHeader
+          sx={{
+            '& .MuiTableBody-root .MuiTableCell-root': {
+              height: 44,
+              py: 0,
+              verticalAlign: 'middle',
+            },
+          }}
+        >
+          <TableHead>
+            {table.getHeaderGroups().map((hg) => (
+              <TableRow key={hg.id}>
+                {hg.headers.map((header) => {
+                  const headerTooltips: Record<string, string> = {
+                    id: 'Unique identifier assigned to this order',
+                    quantity: 'Number of shares in this order',
+                    fillTime: 'Time the order was fully or partially filled by the exchange',
+                    createdAt: 'Time this order was submitted',
+                  };
+                  // Columns hidden below a breakpoint
+                  const responsiveDisplay: Record<string, object> = {
+                    id:        { display: { xs: 'none', md: 'table-cell' } },
+                    type:      { display: { xs: 'none', sm: 'table-cell' } },
+                    quantity:  { display: { xs: 'none', sm: 'table-cell' } },
+                    createdAt: { display: { xs: 'none', lg: 'table-cell' } },
+                    fillTime:  { display: { xs: 'none', lg: 'table-cell' } },
+                  };
+                  const content = header.isPlaceholder
+                    ? null
+                    : flexRender(header.column.columnDef.header, header.getContext());
+                  const tip = headerTooltips[header.id];
+                  return (
+                    <TableCell
+                      key={header.id}
+                      sx={{
+                        fontSize: '0.625rem',
+                        fontWeight: 700,
+                        letterSpacing: '0.07em',
+                        textTransform: 'uppercase',
+                        color: 'text.disabled',
+                        py: 1,
+                        ...responsiveDisplay[header.id],
+                      }}
+                    >
+                      {tip ? (
+                        <Tooltip title={tip} placement="top">
+                          <span>{content}</span>
+                        </Tooltip>
+                      ) : content}
                     </TableCell>
-                  ))}
-                </TableRow>
-              ))}
-            </TableHead>
-            <TableBody>
-              {isLoading
-                ? Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
-                      {columns.map((_, j) => (
-                        <TableCell key={j}><Skeleton /></TableCell>
-                      ))}
-                    </TableRow>
-                  ))
-                : orders.length === 0
-                ? (
-                    <TableRow>
-                      <TableCell colSpan={columns.length} align="center" sx={{ py: 6 }}>
-                        <Typography color="text.secondary" gutterBottom>
-                          No orders match the current filters.
-                        </Typography>
-                        {hasActiveFilters(filters) && (
-                          <Button
-                            size="small"
-                            onClick={() => handleFiltersChange(DEFAULT_FILTERS)}
-                            aria-label="clear filters"
-                          >
-                            Clear filters
-                          </Button>
-                        )}
-                      </TableCell>
-                    </TableRow>
-                  )
-                : table.getRowModel().rows.flatMap((row) => [
-                    <TableRow key={row.id} hover>
-                      {row.getVisibleCells().map((cell) => (
-                        <TableCell key={cell.id}>
+                  );
+                })}
+              </TableRow>
+            ))}
+          </TableHead>
+          <TableBody>
+            {isLoading
+              ? Array.from({ length: 5 }).map((_, i) => (
+                  <TableRow key={i}>
+                    {columns.map((_, j) => (
+                      <TableCell key={j}><Skeleton /></TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              : orders.length === 0
+              ? (
+                  <TableRow>
+                    <TableCell colSpan={columns.length} align="center" sx={{ py: 6 }}>
+                      <Typography color="text.secondary" gutterBottom>
+                        No orders match the current filters.
+                      </Typography>
+                      {hasActiveFilters(filters) && (
+                        <Button
+                          size="small"
+                          onClick={() => handleFiltersChange(DEFAULT_FILTERS)}
+                          aria-label="clear filters"
+                        >
+                          Clear filters
+                        </Button>
+                      )}
+                    </TableCell>
+                  </TableRow>
+                )
+              : table.getRowModel().rows.flatMap((row) => [
+                  <TableRow
+                    key={row.id}
+                    hover
+                    tabIndex={0}
+                    onClick={() => row.toggleExpanded()}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); row.toggleExpanded(); } }}
+                    aria-expanded={row.getIsExpanded()}
+                    sx={{
+                      cursor: 'pointer',
+                      outline: 'none',
+                      ...(row.original.status === 'PENDING' && {
+                        borderLeft: '2px solid',
+                        borderLeftColor: 'warning.main',
+                      }),
+                    }}
+                  >
+                    {row.getVisibleCells().map((cell) => {
+                      const responsiveDisplay: Record<string, object> = {
+                        id:        { display: { xs: 'none', md: 'table-cell' } },
+                        type:      { display: { xs: 'none', sm: 'table-cell' } },
+                        quantity:  { display: { xs: 'none', sm: 'table-cell' } },
+                        createdAt: { display: { xs: 'none', lg: 'table-cell' } },
+                        fillTime:  { display: { xs: 'none', lg: 'table-cell' } },
+                      };
+                      return (
+                        <TableCell key={cell.id} sx={{ ...responsiveDisplay[cell.column.id] }}>
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </TableCell>
-                      ))}
-                    </TableRow>,
-                    row.getIsExpanded() ? (
-                      <TableRow key={`${row.id}-detail`}>
-                        <TableCell colSpan={columns.length} sx={{ p: 0 }}>
-                          <Collapse in>
-                            <RowDetail order={row.original} />
-                          </Collapse>
-                        </TableCell>
-                      </TableRow>
-                    ) : null,
-                  ])}
-            </TableBody>
-          </Table>
-        </TableContainer>
+                      );
+                    })}
+                  </TableRow>,
+                  row.getIsExpanded() ? (
+                    <TableRow key={`${row.id}-detail`}>
+                      <TableCell colSpan={columns.length} sx={{ p: 0 }}>
+                        <Collapse in>
+                          <RowDetail order={row.original} />
+                        </Collapse>
+                      </TableCell>
+                    </TableRow>
+                  ) : null,
+                ])}
+          </TableBody>
+        </Table>
+      </TableContainer>
 
-        {/* Pagination */}
-        <TablePagination
-          component="div"
-          count={total}
-          page={page}
-          rowsPerPage={PAGE_SIZE}
-          rowsPerPageOptions={[PAGE_SIZE]}
-          onPageChange={(_, p) => setPage(p)}
-          aria-label="orders pagination"
+      {/* ── Pagination ── */}
+      <TablePagination
+        component="div"
+        count={total}
+        page={page}
+        rowsPerPage={PAGE_SIZE}
+        rowsPerPageOptions={[PAGE_SIZE]}
+        onPageChange={(_, p) => setPage(p)}
+        aria-label="orders pagination"
+        sx={{ flexShrink: 0 }}
+      />
+
+      {/* ── Secondary filters drawer ── */}
+      <Drawer
+        anchor="right"
+        open={drawerOpen}
+        onClose={() => setDrawerOpen(false)}
+        PaperProps={{ sx: { width: 300 } }}
+      >
+        <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
+          <Stack direction="row" alignItems="center" justifyContent="space-between">
+            <Typography variant="subtitle1" fontWeight={600}>More Filters</Typography>
+            {secondaryCount > 0 && (
+              <Button
+                size="small"
+                onClick={() => handleFiltersChange({ ...filters, symbols: [], side: 'ALL', dateFrom: '', dateTo: '' })}
+                aria-label="clear secondary filters"
+              >
+                Clear
+              </Button>
+            )}
+          </Stack>
+        </Box>
+
+        {/* Reuse FilterPanel but hide its status section since we handle that inline */}
+        <Box sx={{ p: 2 }}>
+          <SideFilter filters={filters} onChange={handleFiltersChange} />
+        </Box>
+      </Drawer>
+    </Box>
+  );
+}
+
+// ── Side + Symbol + Date secondary filters (drawer content) ───────────────────
+function SideFilter({ filters, onChange }: { filters: OrderFilters; onChange: (f: OrderFilters) => void }) {
+  return (
+    <Stack spacing={3}>
+      <Box>
+        <Typography variant="caption" color="text.secondary" gutterBottom display="block">
+          Side
+        </Typography>
+        <ToggleButtonGroup
+          size="small"
+          exclusive
+          fullWidth
+          value={filters.side}
+          onChange={(_, v) => { if (v) onChange({ ...filters, side: v }); }}
+          aria-label="side filter"
+        >
+          <ToggleButton value="ALL">All</ToggleButton>
+          <ToggleButton value="BUY" sx={{ color: 'trading.uptick', '&:hover': { bgcolor: 'success.light', color: '#fff' }, '&:active': { bgcolor: 'success.main', color: '#fff' }, '&:hover:active': { bgcolor: 'success.dark', color: '#fff' }, '&.Mui-selected': { bgcolor: 'success.main', color: '#fff', '&:hover': { bgcolor: 'success.light' }, '&:active, &:hover:active': { bgcolor: 'success.dark' } } }}>Buy</ToggleButton>
+          <ToggleButton value="SELL" sx={{ color: 'trading.downtick', '&:hover': { bgcolor: 'error.light', color: '#fff' }, '&:active': { bgcolor: 'error.main', color: '#fff' }, '&:hover:active': { bgcolor: 'error.dark', color: '#fff' }, '&.Mui-selected': { bgcolor: 'error.main', color: '#fff', '&:hover': { bgcolor: 'error.light' }, '&:active, &:hover:active': { bgcolor: 'error.dark' } } }}>Sell</ToggleButton>
+        </ToggleButtonGroup>
+      </Box>
+
+      <Box>
+        <Typography variant="caption" color="text.secondary" gutterBottom display="block">
+          Symbol
+        </Typography>
+        <Autocomplete
+          multiple
+          size="small"
+          options={KNOWN_SYMBOLS}
+          value={filters.symbols}
+          onChange={(_, value) => onChange({ ...filters, symbols: value })}
+          renderInput={(params) => (
+            <TextField {...params} placeholder="Any symbol" inputProps={{ ...params.inputProps, 'aria-label': 'symbol filter' }} />
+          )}
+          renderTags={(value, getTagProps) =>
+            value.map((option, index) => (
+              <Chip label={option} size="small" {...getTagProps({ index })} key={option} />
+            ))
+          }
         />
       </Box>
-    </Box>
+
+      <Box>
+        <Typography variant="caption" color="text.secondary" gutterBottom display="block">
+          Date Range
+        </Typography>
+        <Stack spacing={1}>
+          <TextField
+            size="small"
+            label="From"
+            type="date"
+            InputLabelProps={{ shrink: true }}
+            inputProps={{ 'aria-label': 'date from' }}
+            value={filters.dateFrom}
+            onChange={(e) => onChange({ ...filters, dateFrom: e.target.value })}
+          />
+          <TextField
+            size="small"
+            label="To"
+            type="date"
+            InputLabelProps={{ shrink: true }}
+            inputProps={{ 'aria-label': 'date to' }}
+            value={filters.dateTo}
+            onChange={(e) => onChange({ ...filters, dateTo: e.target.value })}
+          />
+        </Stack>
+      </Box>
+    </Stack>
   );
 }
