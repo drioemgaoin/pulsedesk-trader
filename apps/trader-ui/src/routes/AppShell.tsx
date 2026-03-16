@@ -9,14 +9,14 @@ import {
   Toolbar,
   Tooltip,
   Typography,
-} from '@mui/material';
-import LogoutIcon from '@mui/icons-material/Logout';
-import LightModeIcon from '@mui/icons-material/LightMode';
-import DarkModeIcon from '@mui/icons-material/DarkMode';
-import ShowChartIcon from '@mui/icons-material/ShowChart';
-import AccountBalanceWalletIcon from '@mui/icons-material/AccountBalanceWallet';
-import ReceiptLongIcon from '@mui/icons-material/ReceiptLong';
-import ScienceIcon from '@mui/icons-material/Science';
+  LogoutIcon,
+  LightModeIcon,
+  DarkModeIcon,
+  ShowChartIcon,
+  AccountBalanceWalletIcon,
+  ReceiptLongIcon,
+  ScienceIcon,
+} from '@pulsedesk/ui';
 import { useDispatch, useSelector } from 'react-redux';
 import type { AppDispatch, RootState } from '../store/store';
 import { logout } from '../store/authSlice';
@@ -106,17 +106,20 @@ export default function AppShell() {
                   height:         48,
                   fontSize:       '0.8125rem',
                   fontWeight:     500,
-                  color:          'text.secondary',
+                  color:          'text.primary',
                   textDecoration: 'none',
                   borderBottom:   '2px solid transparent',
-                  transition:     'color 120ms, border-color 120ms',
+                  transition:     'color 120ms, border-color 120ms, opacity 120ms',
+                  opacity:        0.72,
                   '&.active': {
                     color:             'primary.main',
                     borderBottomColor: 'primary.main',
                     fontWeight:        600,
+                    opacity:           1,
                   },
                   '&:hover:not(.active)': {
-                    color: 'text.primary',
+                    color:   'primary.light',
+                    opacity: 1,
                   },
                   '&:active': {
                     opacity: 0.72,

@@ -10,7 +10,7 @@ import {
   Divider,
   TextField,
   Typography,
-} from '@mui/material';
+} from '@pulsedesk/ui';
 import type { AppDispatch, RootState } from '../store/store';
 import { loginThunk } from '../store/authSlice';
 import { setAuthToken } from '../api/client';
@@ -55,7 +55,7 @@ export default function LoginPage() {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        bgcolor: 'background.default',
+        bgcolor: 'var(--pd-bg-canvas)',
         /* Subtle grid pattern for depth */
         backgroundImage: (t) =>
           `radial-gradient(${t.palette.divider} 1px, transparent 1px)`,
@@ -68,7 +68,7 @@ export default function LoginPage() {
         sx={{
           width: '100%',
           maxWidth: 400,
-          bgcolor: 'background.paper',
+          bgcolor: 'var(--pd-bg-surface)',
           border: 1,
           borderColor: 'divider',
           borderRadius: 2,
@@ -81,7 +81,7 @@ export default function LoginPage() {
         <Box sx={{ p: 4 }}>
           {/* Wordmark */}
           <Box sx={{ mb: 3 }}>
-            <Box sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, mb: 1 }}>
+            <Box component="h1" aria-label="PulseDesk Trader" sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, mb: 1, m: 0 }}>
               <Typography
                 component="span"
                 sx={{ fontSize: '1.375rem', fontWeight: 400, letterSpacing: '-0.02em', color: 'text.primary' }}

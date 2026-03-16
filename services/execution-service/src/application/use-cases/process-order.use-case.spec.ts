@@ -6,6 +6,7 @@ import { NoMarketPriceError } from '../../domain/errors/no-market-price.error';
 import { IExecutionRepository } from '../../domain/ports/execution-repository.port';
 import { IFillEventPublisher } from '../../domain/ports/fill-event-publisher.port';
 import { IMarketPriceCache } from '../../domain/ports/market-price-cache.port';
+import { ILimitOrderQueue } from '../../domain/ports/limit-order-queue.port';
 import { OrderSubmittedEvent } from '@pulsedesk/contracts';
 
 const makeRepo = (existing: Execution | null = null): IExecutionRepository => ({
@@ -17,9 +18,16 @@ const makePublisher = (): jest.Mocked<IFillEventPublisher> => ({
   publishFill: jest.fn().mockResolvedValue(undefined),
 });
 
-const makeCache = (price: number | null = 155): IMarketPriceCache => ({
+// Default price 149 satisfies LIMIT BUY condition at limitPrice=150 (149 ≤ 150)
+const makeCache = (price: number | null = 149): IMarketPriceCache => ({
   getPrice: jest.fn().mockReturnValue(price),
   setPrice: jest.fn(),
+});
+
+const makeQueue = (): jest.Mocked<ILimitOrderQueue> => ({
+  add: jest.fn(),
+  remove: jest.fn(),
+  getBySymbol: jest.fn().mockReturnValue([]),
 });
 
 const LIMIT_EVENT: OrderSubmittedEvent = {
@@ -55,11 +63,11 @@ describe('Given a new LIMIT order event', () => {
       const repo = makeRepo();
       const publisher = makePublisher();
       const cache = makeCache();
-      const { execution, created } = await new ProcessOrderUseCase(repo, publisher, cache).execute(LIMIT_EVENT);
+      const { execution, created } = await new ProcessOrderUseCase(repo, publisher, cache, makeQueue()).execute(LIMIT_EVENT);
       expect(created).toBe(true);
-      expect(execution.fillPrice).toBe(150);
-      expect(execution.filledQuantity).toBe(10);
-      expect(execution.orderId).toBe('order-1');
+      expect(execution!.fillPrice).toBe(150);
+      expect(execution!.filledQuantity).toBe(10);
+      expect(execution!.orderId).toBe('order-1');
       expect(repo.save).toHaveBeenCalledTimes(1);
     });
 
@@ -67,11 +75,24 @@ describe('Given a new LIMIT order event', () => {
       const repo = makeRepo();
       const publisher = makePublisher();
       const cache = makeCache();
-      await new ProcessOrderUseCase(repo, publisher, cache).execute(LIMIT_EVENT);
+      await new ProcessOrderUseCase(repo, publisher, cache, makeQueue()).execute(LIMIT_EVENT);
       expect(publisher.publishFill).toHaveBeenCalledTimes(1);
       expect(publisher.publishFill).toHaveBeenCalledWith(
         expect.objectContaining({ orderId: 'order-1', fillPrice: 150 }),
       );
+    });
+
+    it('should queue the order when the limit condition is not yet met', async () => {
+      // Market price 155 > limitPrice 150 → BUY condition not met → park in queue
+      const repo = makeRepo();
+      const publisher = makePublisher();
+      const cache = makeCache(155);
+      const queue = makeQueue();
+      const result = await new ProcessOrderUseCase(repo, publisher, cache, queue).execute(LIMIT_EVENT);
+      expect(result.created).toBe(false);
+      expect(result.execution).toBeNull();
+      expect(queue.add).toHaveBeenCalledWith(expect.objectContaining({ orderId: 'order-1', limitPrice: 150 }));
+      expect(repo.save).not.toHaveBeenCalled();
     });
   });
 });
@@ -82,8 +103,8 @@ describe('Given a new MARKET order event with a cached price', () => {
       const repo = makeRepo();
       const publisher = makePublisher();
       const cache = makeCache(155.5);
-      const { execution } = await new ProcessOrderUseCase(repo, publisher, cache).execute(MARKET_EVENT);
-      expect(execution.fillPrice).toBe(155.5);
+      const { execution } = await new ProcessOrderUseCase(repo, publisher, cache, makeQueue()).execute(MARKET_EVENT);
+      expect(execution!.fillPrice).toBe(155.5);
     });
   });
 });
@@ -94,7 +115,7 @@ describe('Given a MARKET order event with no cached price', () => {
       const repo = makeRepo();
       const publisher = makePublisher();
       const cache = makeCache(null);
-      await expect(new ProcessOrderUseCase(repo, publisher, cache).execute(MARKET_EVENT))
+      await expect(new ProcessOrderUseCase(repo, publisher, cache, makeQueue()).execute(MARKET_EVENT))
         .rejects.toThrow(NoMarketPriceError);
       expect(repo.save).not.toHaveBeenCalled();
     });
@@ -118,9 +139,9 @@ describe('Given a duplicate order event (same orderId already executed)', () => 
       const repo = makeRepo(existing);
       const publisher = makePublisher();
       const cache = makeCache();
-      const { execution, created } = await new ProcessOrderUseCase(repo, publisher, cache).execute(LIMIT_EVENT);
+      const { execution, created } = await new ProcessOrderUseCase(repo, publisher, cache, makeQueue()).execute(LIMIT_EVENT);
       expect(created).toBe(false);
-      expect(execution.id).toBe('exec-existing');
+      expect(execution!.id).toBe('exec-existing');
       expect(repo.save).not.toHaveBeenCalled();
       expect(publisher.publishFill).not.toHaveBeenCalled();
     });
@@ -135,7 +156,7 @@ describe('Given a fill event publisher that throws', () => {
         publishFill: jest.fn().mockRejectedValue(new Error('broker unavailable')),
       };
       const cache = makeCache();
-      await expect(new ProcessOrderUseCase(repo, publisher, cache).execute(LIMIT_EVENT))
+      await expect(new ProcessOrderUseCase(repo, publisher, cache, makeQueue()).execute(LIMIT_EVENT))
         .resolves.toMatchObject({ created: true });
       expect(repo.save).toHaveBeenCalledTimes(1);
     });

@@ -7,7 +7,6 @@ import {
   Button,
   Divider,
   IconButton,
-  InputAdornment,
   Paper,
   Skeleton,
   Stack,
@@ -18,16 +17,15 @@ import {
   TableHead,
   TableRow,
   TableSortLabel,
-  TextField,
   Tooltip,
   Typography,
   useTheme,
-} from '@mui/material';
-import DownloadIcon from '@mui/icons-material/Download';
-import SearchIcon from '@mui/icons-material/Search';
-import ShowChartIcon from '@mui/icons-material/ShowChart';
-import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import TrendingDownIcon from '@mui/icons-material/TrendingDown';
+  DownloadIcon,
+  ShowChartIcon,
+  TrendingUpIcon,
+  TrendingDownIcon,
+  SearchField,
+} from '@pulsedesk/ui';
 import { usePositionsQuery } from './hooks/usePositionsQuery';
 import { useMarketStream } from './hooks/useMarketStream';
 import { useTickHistory } from './hooks/useTickHistory';
@@ -50,6 +48,47 @@ function fmt(n: number, decimals = 2): string {
   });
 }
 
+// ── SortableHeader — declared at module scope to prevent recreation on every render ──
+interface SortableHeaderProps {
+  label: string;
+  sortKey: SortKey;
+  align?: 'left' | 'right';
+  tooltip?: string;
+  sx?: object;
+  sort: SortState;
+  onSort: (key: SortKey) => void;
+}
+
+function SortableHeader({ label, sortKey, align = 'right', tooltip, sx: extraSx, sort, onSort }: SortableHeaderProps) {
+  return (
+    <TableCell
+      align={align}
+      sortDirection={sort.key === sortKey ? sort.direction : false}
+      sx={{
+        fontSize: '0.625rem',
+        fontWeight: 700,
+        letterSpacing: '0.07em',
+        textTransform: 'uppercase',
+        color: 'text.disabled',
+        py: 1,
+        ...extraSx,
+      }}
+    >
+      <TableSortLabel
+        active={sort.key === sortKey}
+        direction={sort.key === sortKey ? sort.direction : 'asc'}
+        onClick={() => onSort(sortKey)}
+      >
+        {tooltip ? (
+          <Tooltip title={tooltip} placement="top">
+            <span aria-label={label}>{label}</span>
+          </Tooltip>
+        ) : label}
+      </TableSortLabel>
+    </TableCell>
+  );
+}
+
 function fmtPnl(n: number): string {
   return `${n >= 0 ? '+' : ''}${fmt(n)}`;
 }
@@ -64,7 +103,7 @@ export default function PortfolioPage() {
 
   const { data, isLoading, isError, error } = usePositionsQuery();
 
-  const positions = data?.positions ?? [];
+  const positions = useMemo(() => data?.positions ?? [], [data]);
   const symbols = useMemo(() => positions.map((p) => p.symbol), [positions]);
 
   const { snapshot } = useMarketStream({ url: STREAM_URL, token, symbols });
@@ -74,6 +113,7 @@ export default function PortfolioPage() {
     if (!data) return;
     const now = Math.floor(Date.now() / 1000) as UTCTimestamp;
     const cutoff = (now - 300) as UTCTimestamp;
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setPnlHistory((prev) => {
       const filtered = prev.filter((p) => p.time >= cutoff);
       const last = filtered[filtered.length - 1];
@@ -134,48 +174,6 @@ export default function PortfolioPage() {
     );
   }
 
-  function SortableHeader({
-    label,
-    sortKey,
-    align = 'right',
-    tooltip,
-    sx: extraSx,
-  }: {
-    label: string;
-    sortKey: SortKey;
-    align?: 'left' | 'right';
-    tooltip?: string;
-    sx?: object;
-  }) {
-    return (
-      <TableCell
-        align={align}
-        sortDirection={sort.key === sortKey ? sort.direction : false}
-        sx={{
-          fontSize: '0.625rem',
-          fontWeight: 700,
-          letterSpacing: '0.07em',
-          textTransform: 'uppercase',
-          color: 'text.disabled',
-          py: 1,
-          ...extraSx,
-        }}
-      >
-        <TableSortLabel
-          active={sort.key === sortKey}
-          direction={sort.key === sortKey ? sort.direction : 'asc'}
-          onClick={() => handleSort(sortKey)}
-        >
-          {tooltip ? (
-            <Tooltip title={tooltip} placement="top">
-              <span>{label}</span>
-            </Tooltip>
-          ) : label}
-        </TableSortLabel>
-      </TableCell>
-    );
-  }
-
   const pnlIsPositive = summary.totalUnrealizedPnl > 0;
   const pnlIsNegative = summary.totalUnrealizedPnl < 0;
 
@@ -190,10 +188,13 @@ export default function PortfolioPage() {
           pb: 2,
           borderBottom: 1,
           borderColor: 'divider',
-          bgcolor: 'background.paper',
+          bgcolor: 'var(--pd-bg-surface)',
           flexShrink: 0,
         }}
       >
+        <Typography variant="h5" component="h1" tabIndex={-1} sx={{ mb: 1 }}>
+          Portfolio
+        </Typography>
         <Tooltip title="Total gain or loss if all open positions were closed at current market prices" placement="right">
           <Typography variant="overline" color="text.secondary" sx={{ letterSpacing: '0.1em', cursor: 'default', display: 'inline-block' }}>
             Unrealized P&amp;L
@@ -298,22 +299,15 @@ export default function PortfolioPage() {
             borderRadius: 1,
             border: 1,
             borderColor: 'divider',
-            bgcolor: 'background.paper',
+            bgcolor: 'var(--pd-bg-surface)',
           }}
         >
-          <TextField
+          <SearchField
             size="small"
             placeholder="Filter symbols…"
             inputProps={{ 'aria-label': 'filter symbols' }}
             value={symbolFilter}
             onChange={(e) => setSymbolFilter(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon sx={{ fontSize: 14, color: 'text.disabled' }} />
-                </InputAdornment>
-              ),
-            }}
             sx={{ width: 240 }}
           />
           <Box sx={{ flex: 1 }} />
@@ -357,10 +351,10 @@ export default function PortfolioPage() {
           >
             <TableHead>
               <TableRow>
-                <SortableHeader label="Symbol" sortKey="symbol" align="left" />
-                <SortableHeader label="Qty" sortKey="quantity" tooltip="Number of shares held" sx={{ display: { xs: 'none', sm: 'table-cell' } }} />
-                <SortableHeader label="Avg Cost" sortKey="averageCost" tooltip="Average price paid per share across all purchases" sx={{ display: { xs: 'none', md: 'table-cell' } }} />
-                <SortableHeader label="Market Price" sortKey="marketPrice" tooltip="Current live market price for this symbol" sx={{ display: { xs: 'none', md: 'table-cell' } }} />
+                <SortableHeader label="Symbol" sortKey="symbol" align="left" sort={sort} onSort={handleSort} />
+                <SortableHeader label="Qty" sortKey="quantity" tooltip="Number of shares held" sx={{ display: { xs: 'none', sm: 'table-cell' } }} sort={sort} onSort={handleSort} />
+                <SortableHeader label="Avg Cost" sortKey="averageCost" tooltip="Average price paid per share across all purchases" sx={{ display: { xs: 'none', md: 'table-cell' } }} sort={sort} onSort={handleSort} />
+                <SortableHeader label="Market Price" sortKey="marketPrice" tooltip="Current live market price for this symbol" sx={{ display: { xs: 'none', md: 'table-cell' } }} sort={sort} onSort={handleSort} />
                 <TableCell
                   align="right"
                   sx={{ fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'text.disabled', py: 1, display: { xs: 'none', lg: 'table-cell' } }}
@@ -369,8 +363,8 @@ export default function PortfolioPage() {
                     <span>Mkt Value</span>
                   </Tooltip>
                 </TableCell>
-                <SortableHeader label="Unrealized P&L" sortKey="unrealizedPnl" tooltip="Profit or loss if all shares were sold at the current market price" />
-                <SortableHeader label="% Return" sortKey="pctReturn" tooltip="Percentage gain or loss relative to your average cost" />
+                <SortableHeader label="Unrealized P&L" sortKey="unrealizedPnl" tooltip="Profit or loss if all shares were sold at the current market price" sort={sort} onSort={handleSort} />
+                <SortableHeader label="% Return" sortKey="pctReturn" tooltip="Percentage gain or loss relative to your average cost" sort={sort} onSort={handleSort} />
                 <TableCell
                   align="center"
                   sx={{

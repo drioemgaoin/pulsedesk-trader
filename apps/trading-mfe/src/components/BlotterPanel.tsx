@@ -3,7 +3,6 @@ import {
   Alert,
   Badge,
   Box,
-  Chip,
   IconButton,
   Skeleton,
   Stack,
@@ -14,26 +13,20 @@ import {
   TableHead,
   TableRow,
   Tabs,
+  ToggleButton,
+  ToggleButtonGroup,
   Tooltip,
   Typography,
-} from '@mui/material';
-import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
-import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
+  KeyboardArrowDownIcon,
+  KeyboardArrowUpIcon,
+  StatusChip,
+} from '@pulsedesk/ui';
 import { useOrdersQuery } from '../hooks/useOrdersQuery';
 import { PositionsPanel } from './PositionsPanel';
 import type { OrderStatus } from '../api/types';
 
-type ActiveTab = 'ALL' | 'PENDING' | 'FILLED' | 'CANCELLED' | 'REJECTED' | 'POSITIONS';
-
-function statusChipColor(status: OrderStatus): 'success' | 'primary' | 'error' | 'default' | 'warning' {
-  switch (status) {
-    case 'FILLED':   return 'success';
-    case 'ACCEPTED': return 'primary';
-    case 'REJECTED': return 'error';
-    case 'PENDING':  return 'warning';
-    default:         return 'default';
-  }
-}
+type MainTab = 'ORDERS' | 'POSITIONS';
+type StatusFilter = 'ALL' | 'PENDING' | 'FILLED' | 'CANCELLED' | 'REJECTED';
 
 function formatTime(iso: string): string {
   try {
@@ -51,69 +44,51 @@ interface BlotterPanelProps {
 }
 
 export function BlotterPanel({ accountId, isCollapsed, onCollapseToggle }: BlotterPanelProps) {
-  const [tab, setTab] = useState<ActiveTab>('ALL');
+  const [mainTab, setMainTab] = useState<MainTab>('ORDERS');
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>('ALL');
 
-  const statusFilter: OrderStatus | undefined =
-    tab === 'PENDING'   ? 'PENDING' :
-    tab === 'FILLED'    ? 'FILLED' :
-    tab === 'CANCELLED' ? 'CANCELLED' :
-    tab === 'REJECTED'  ? 'REJECTED' :
+  const queryStatus: OrderStatus | undefined =
+    statusFilter === 'FILLED'    ? 'FILLED' :
+    statusFilter === 'CANCELLED' ? 'CANCELLED' :
+    statusFilter === 'REJECTED'  ? 'REJECTED' :
     undefined;
 
   const { data: page, isLoading, isError } = useOrdersQuery(
     accountId,
-    tab === 'POSITIONS' ? undefined : statusFilter,
+    mainTab === 'POSITIONS' ? undefined : queryStatus,
   );
 
-  const orders = page?.orders ?? [];
-  const total  = page?.pagination.total ?? 0;
+  const allOrders  = page?.orders ?? [];
+  const total      = page?.pagination.total ?? 0;
 
-  // Badge: count PENDING + ACCEPTED in All view
-  const pendingCount = tab === 'ALL'
-    ? (page?.orders ?? []).filter((o) => o.status === 'PENDING' || o.status === 'ACCEPTED').length
-    : 0;
+  // "Open" = PENDING (risk not yet checked) + ACCEPTED (risk-approved, awaiting fill)
+  const openOrders   = allOrders.filter((o) => o.status === 'PENDING' || o.status === 'ACCEPTED');
+  const orders       = statusFilter === 'PENDING' ? openOrders : allOrders;
+  const pendingCount = openOrders.length;
 
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
 
-      {/* ── Unified tab bar — owns the bottom panel header, no outer wrapper needed ── */}
+      {/* ── Top navigation: Orders | Positions ── */}
       <Box sx={{ borderBottom: isCollapsed ? 0 : 1, borderColor: 'divider', display: 'flex', alignItems: 'center', flexShrink: 0 }}>
         <Tabs
-          value={tab}
-          onChange={(_, v: ActiveTab) => setTab(v)}
-          aria-label="Bottom panel tabs"
-          sx={{ minHeight: 38, flex: 1 }}
-          variant="scrollable"
-          scrollButtons={false}
+          value={mainTab}
+          onChange={(_, v: MainTab) => setMainTab(v)}
+          aria-label="blotter panels"
+          sx={{ flex: 1, minHeight: 38, '& .MuiTab-root': { minHeight: 38, py: 0, fontSize: '0.75rem', textTransform: 'none' } }}
         >
-          <Tab value="ALL" label="Orders" sx={{ minHeight: 38, fontSize: '0.75rem' }} />
-          <Tab
-            value="PENDING"
-            label={
-              <Badge
-                badgeContent={pendingCount || undefined}
-                color="warning"
-                sx={{ '& .MuiBadge-badge': { right: -10, top: 2, fontSize: 10 } }}
-              >
-                Open
-              </Badge>
-            }
-            sx={{ minHeight: 38, pr: pendingCount ? 3 : 1, fontSize: '0.75rem' }}
-          />
-          <Tab value="FILLED"    label="Filled"    sx={{ minHeight: 38, fontSize: '0.75rem' }} />
-          <Tab value="REJECTED"  label="Rejected"  sx={{ minHeight: 38, fontSize: '0.75rem' }} />
-          <Tab value="CANCELLED" label="Cancelled" sx={{ minHeight: 38, fontSize: '0.75rem' }} />
-          <Tab value="POSITIONS" label="Positions" sx={{ minHeight: 38, fontSize: '0.75rem' }} />
+          <Tab label="Orders" value="ORDERS" />
+          <Tab label="Positions" value="POSITIONS" />
         </Tabs>
 
-        {/* Collapse toggle — owned by BlotterPanel so the outer wrapper needs no tabs */}
+        {/* Collapse toggle */}
         {onCollapseToggle && (
           <Tooltip title={isCollapsed ? 'Expand panel' : 'Collapse panel'}>
             <IconButton
               size="small"
               onClick={onCollapseToggle}
               aria-label={isCollapsed ? 'expand bottom panel' : 'collapse bottom panel'}
-              sx={{ mr: 0.5 }}
+              sx={{ mr: 0.5, flexShrink: 0 }}
             >
               {isCollapsed
                 ? <KeyboardArrowUpIcon fontSize="small" />
@@ -127,13 +102,60 @@ export function BlotterPanel({ accountId, isCollapsed, onCollapseToggle }: Blott
       {!isCollapsed && (
         <Box sx={{ flex: 1, overflow: 'auto' }}>
 
-          {/* Positions tab */}
-          {tab === 'POSITIONS' && (
+          {/* Positions panel */}
+          {mainTab === 'POSITIONS' && (
             <PositionsPanel accountId={accountId} />
           )}
 
+          {/* Orders view */}
+          {mainTab === 'ORDERS' && (
+            <>
+              {/* ── Status filter bar ── */}
+              <Box sx={{ borderBottom: 1, borderColor: 'divider', overflowX: 'auto', flexShrink: 0 }}>
+                <ToggleButtonGroup
+                  value={statusFilter}
+                  exclusive
+                  onChange={(_, v: StatusFilter) => { if (v) setStatusFilter(v); }}
+                  aria-label="filter by status"
+                  sx={{
+                    display: 'flex',
+                    '& .MuiToggleButton-root': {
+                      border: 'none',
+                      borderRadius: 0,
+                      px: 2,
+                      minHeight: 34,
+                      fontSize: '0.7rem',
+                      textTransform: 'none',
+                      '&.Mui-selected': {
+                        bgcolor: 'transparent',
+                        borderBottom: '2px solid',
+                        borderBottomColor: 'primary.main',
+                        color: 'primary.main',
+                      },
+                      '&:hover': { bgcolor: 'action.hover' },
+                    },
+                  }}
+                >
+                  <ToggleButton value="ALL">All</ToggleButton>
+                  <ToggleButton value="PENDING" sx={{ pr: pendingCount ? 3 : undefined }}>
+                    <Badge
+                      badgeContent={pendingCount || undefined}
+                      color="warning"
+                      sx={{ '& .MuiBadge-badge': { right: -10, top: 2, fontSize: 10 } }}
+                    >
+                      Open
+                    </Badge>
+                  </ToggleButton>
+                  <ToggleButton value="FILLED">Filled</ToggleButton>
+                  <ToggleButton value="REJECTED">Rejected</ToggleButton>
+                  <ToggleButton value="CANCELLED">Cancelled</ToggleButton>
+                </ToggleButtonGroup>
+              </Box>
+            </>
+          )}
+
           {/* Orders table */}
-          {tab !== 'POSITIONS' && (
+          {mainTab === 'ORDERS' && (
             <>
               {isError && orders.length === 0 && (
                 <Alert severity="error" sx={{ m: 1 }}>Failed to load orders. Retrying…</Alert>
@@ -151,13 +173,13 @@ export function BlotterPanel({ accountId, isCollapsed, onCollapseToggle }: Blott
               >
                 <TableHead>
                   <TableRow>
-                    <TableCell sx={{ fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'text.disabled', py: 1, display: { xs: 'none', sm: 'table-cell' } }}>Time</TableCell>
-                    <TableCell sx={{ fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'text.disabled', py: 1 }}>Symbol</TableCell>
-                    <TableCell sx={{ fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'text.disabled', py: 1 }}>Side</TableCell>
-                    <TableCell sx={{ fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'text.disabled', py: 1, display: { xs: 'none', sm: 'table-cell' } }}>Type</TableCell>
-                    <TableCell align="right" sx={{ fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'text.disabled', py: 1, display: { xs: 'none', sm: 'table-cell' } }}>Qty</TableCell>
-                    <TableCell align="right" sx={{ fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'text.disabled', py: 1, display: { xs: 'none', md: 'table-cell' } }}>Limit</TableCell>
-                    <TableCell sx={{ fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'text.disabled', py: 1 }}>Status</TableCell>
+                    <TableCell sx={{ fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'text.secondary', py: 1, display: { xs: 'none', sm: 'table-cell' } }}>Time</TableCell>
+                    <TableCell sx={{ fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'text.secondary', py: 1 }}>Symbol</TableCell>
+                    <TableCell sx={{ fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'text.secondary', py: 1 }}>Side</TableCell>
+                    <TableCell sx={{ fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'text.secondary', py: 1, display: { xs: 'none', sm: 'table-cell' } }}>Type</TableCell>
+                    <TableCell align="right" sx={{ fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'text.secondary', py: 1, display: { xs: 'none', sm: 'table-cell' } }}>Qty</TableCell>
+                    <TableCell align="right" sx={{ fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'text.secondary', py: 1, display: { xs: 'none', md: 'table-cell' } }}>Limit</TableCell>
+                    <TableCell sx={{ fontSize: '0.625rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'text.secondary', py: 1 }}>Status</TableCell>
                   </TableRow>
                 </TableHead>
 
@@ -176,7 +198,7 @@ export function BlotterPanel({ accountId, isCollapsed, onCollapseToggle }: Blott
                   {!isLoading && orders.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={7} align="center" sx={{ color: 'text.disabled', py: 3 }}>
-                        {tab === 'PENDING' ? 'No active orders.' : 'No orders matching filter.'}
+                        {statusFilter === 'PENDING' ? 'No open orders.' : 'No orders matching filter.'}
                       </TableCell>
                     </TableRow>
                   )}
@@ -205,7 +227,7 @@ export function BlotterPanel({ accountId, isCollapsed, onCollapseToggle }: Blott
                         {order.limitPrice != null ? order.limitPrice.toFixed(2) : '—'}
                       </TableCell>
                       <TableCell>
-                        <Chip label={order.status} color={statusChipColor(order.status)} size="small" sx={{ fontSize: '0.625rem', height: 18, fontWeight: 700, letterSpacing: '0.03em' }} />
+                        <StatusChip status={order.status} />
                       </TableCell>
                     </TableRow>
                   ))}

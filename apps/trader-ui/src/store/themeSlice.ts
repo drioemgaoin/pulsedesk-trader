@@ -8,7 +8,7 @@
  */
 
 import { createSlice } from '@reduxjs/toolkit';
-import type { PaletteMode } from '@mui/material';
+import type { PaletteMode } from '@pulsedesk/ui';
 
 const STORAGE_KEY = 'pulsedesk-theme';
 

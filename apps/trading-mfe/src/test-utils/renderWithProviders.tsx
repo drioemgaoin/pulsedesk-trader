@@ -3,8 +3,7 @@ import { render } from '@testing-library/react';
 import { configureStore } from '@reduxjs/toolkit';
 import { Provider } from 'react-redux';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ThemeProvider } from '@mui/material/styles';
-import { createTheme } from '@mui/material/styles';
+import { ThemeProvider, createTheme } from '@pulsedesk/ui';
 
 const theme = createTheme({ palette: { mode: 'dark' } });
 

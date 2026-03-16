@@ -7,7 +7,7 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Typography,
-} from '@mui/material';
+} from '@pulsedesk/ui';
 import { ALL_STATUSES, KNOWN_SYMBOLS } from '../lib/filters';
 import type { OrderFilters, OrderStatus } from '../lib/filters';
 import type { OrderSide } from '../api/types';

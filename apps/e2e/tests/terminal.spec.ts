@@ -55,7 +55,7 @@ test.describe('Trading Terminal', () => {
 
   test('submit MARKET BUY order → appears in blotter as PENDING', async ({ authedPage: page }) => {
     // Override orders: submit returns PENDING, subsequent GET returns one PENDING order
-    await page.route(`${API}/api/v1/orders`, async (route) => {
+    await page.route(`${API}/api/v1/orders**`, async (route) => {
       if (route.request().method() === 'POST') {
         return route.fulfill({ status: 201, json: ORDER_PENDING });
       }
@@ -65,20 +65,21 @@ test.describe('Trading Terminal', () => {
       });
     });
 
-    // Click AAPL row and wait for symbol to propagate into the order ticket
-    await expect(page.getByRole('row', { name: /AAPL/i })).toBeVisible({ timeout: 8_000 });
-    await page.getByRole('row', { name: /AAPL/i }).click();
+    // Click AAPL row in the watchlist and wait for symbol to propagate into the order ticket
+    const watchlistAapl = page.getByRole('grid', { name: 'Watchlist' }).getByRole('row', { name: /AAPL/i });
+    await expect(watchlistAapl).toBeVisible({ timeout: 8_000 });
+    await watchlistAapl.click();
     await expect(page.getByRole('textbox', { name: 'Symbol', exact: true })).toHaveValue('AAPL', { timeout: 3_000 });
 
     await page.fill('input[aria-label="Quantity"]', '10');
     await page.locator('button[type="submit"]').click();
 
     // Blotter should show the new order
-    await expect(page.getByText('PENDING')).toBeVisible({ timeout: 8_000 });
+    await expect(page.getByText('PENDING').first()).toBeVisible({ timeout: 8_000 });
   });
 
   test('submit order → success snackbar with confirmation', async ({ authedPage: page }) => {
-    await page.route(`${API}/api/v1/orders`, async (route) => {
+    await page.route(`${API}/api/v1/orders**`, async (route) => {
       if (route.request().method() === 'POST') {
         return route.fulfill({ status: 201, json: ORDER_PENDING });
       }
@@ -147,7 +148,7 @@ test.describe('Trading Terminal', () => {
   });
 
   test('server error on order submit → error alert shown', async ({ authedPage: page }) => {
-    await page.route(`${API}/api/v1/orders`, async (route) => {
+    await page.route(`${API}/api/v1/orders**`, async (route) => {
       if (route.request().method() === 'POST') {
         return route.fulfill({ status: 422, json: { message: 'Insufficient balance' } });
       }

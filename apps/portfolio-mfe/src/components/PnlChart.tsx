@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react';
-import { useTheme } from '@mui/material';
+import { useTheme } from '@pulsedesk/ui';
 import { createChart, ColorType, LineStyle, AreaSeries } from 'lightweight-charts';
 import type { UTCTimestamp } from 'lightweight-charts';
 
@@ -65,7 +65,7 @@ export function PnlChart({ data, height = 140 }: PnlChartProps) {
       ro.disconnect();
       chart.remove();
     };
-  }, [data, height, theme.palette.mode]);
+  }, [data, height, theme.palette.mode, theme.palette.background.paper, theme.palette.divider, theme.palette.text.secondary]);
 
   return <div ref={containerRef} style={{ width: '100%', height }} />;
 }

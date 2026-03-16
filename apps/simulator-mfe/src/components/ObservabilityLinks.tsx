@@ -5,8 +5,8 @@ import {
   Link,
   Stack,
   Typography,
-} from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+  ExpandMoreIcon,
+} from '@pulsedesk/ui';
 
 const GRAFANA_URL =
   (import.meta.env['VITE_GRAFANA_URL'] as string | undefined) ?? 'http://localhost:3001';

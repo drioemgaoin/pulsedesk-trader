@@ -3,14 +3,14 @@ import '@fontsource/inter/500.css';
 import '@fontsource/inter/600.css';
 import '@fontsource/inter/700.css';
 import '@fontsource/jetbrains-mono/400.css';
-import './theme/tokens.css';
+import '@pulsedesk/ui/tokens.css';
 
 import { StrictMode, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
 import { ErrorBoundary } from 'react-error-boundary';
 import { Provider, useSelector } from 'react-redux';
-import { ThemeProvider, CssBaseline, Box, Typography } from '@mui/material';
+import { ThemeProvider, CssBaseline, Box, Typography } from '@pulsedesk/ui';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 
 import { store } from './store/store';

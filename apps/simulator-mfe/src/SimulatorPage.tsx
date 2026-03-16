@@ -1,5 +1,5 @@
 import { useSelector } from 'react-redux';
-import { Box, Card, CardContent, LinearProgress, Stack, Typography } from '@mui/material';
+import { Box, Card, CardContent, LinearProgress, Stack, Typography } from '@pulsedesk/ui';
 import { useSimulator } from './hooks/useSimulator';
 import { ConfigPanel } from './components/ConfigPanel';
 import { LiveStats } from './components/LiveStats';

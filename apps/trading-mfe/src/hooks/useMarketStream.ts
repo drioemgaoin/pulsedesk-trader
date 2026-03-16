@@ -8,6 +8,11 @@ export interface MarketTick {
   last: number;
   volume: number;
   timestamp: string;
+  /**
+   * Optional preloaded history points.
+   * Used by Storybook/static environments to draw a full curve without live ticks.
+   */
+  history?: Array<{ timestamp: string; last: number }>;
 }
 
 export interface FillEvent {

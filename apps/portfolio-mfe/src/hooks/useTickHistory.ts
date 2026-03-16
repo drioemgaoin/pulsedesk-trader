@@ -30,5 +30,6 @@ export function useTickHistory(
     if (changed) forceUpdate();
   }, [snapshot, maxLength]);
 
+  // eslint-disable-next-line react-hooks/refs
   return historyRef.current;
 }

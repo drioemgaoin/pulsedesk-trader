@@ -1,9 +1,10 @@
 import React from 'react';
+import { MemoryRouter } from 'react-router-dom';
 import { render } from '@testing-library/react';
 import { configureStore } from '@reduxjs/toolkit';
 import { Provider } from 'react-redux';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { ThemeProvider, createTheme } from '@pulsedesk/ui';
 
 const theme = createTheme({ palette: { mode: 'dark' } });
 
@@ -40,11 +41,13 @@ export function renderWithProviders(
 
   function Wrapper({ children }: { children: React.ReactNode }) {
     return (
-      <Provider store={store}>
-        <QueryClientProvider client={queryClient}>
-          <ThemeProvider theme={theme}>{children}</ThemeProvider>
-        </QueryClientProvider>
-      </Provider>
+      <MemoryRouter>
+        <Provider store={store}>
+          <QueryClientProvider client={queryClient}>
+            <ThemeProvider theme={theme}>{children}</ThemeProvider>
+          </QueryClientProvider>
+        </Provider>
+      </MemoryRouter>
     );
   }
 

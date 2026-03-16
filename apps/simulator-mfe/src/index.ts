@@ -1,1 +1,1 @@
-export { default } from './SimulatorPage';
+export { default as SimulatorPage } from './SimulatorPage';

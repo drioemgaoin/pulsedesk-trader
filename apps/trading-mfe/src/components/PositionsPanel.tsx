@@ -9,7 +9,7 @@ import {
   TableHead,
   TableRow,
   Tooltip,
-} from '@mui/material';
+} from '@pulsedesk/ui';
 import { usePositionsQuery } from '../hooks/usePositionsQuery';
 
 function fmt2(value: number): string {
@@ -102,7 +102,7 @@ export function PositionsPanel({ accountId }: PositionsPanelProps) {
             {positions !== null && positions.length === 0 && !isLoading && (
               <TableRow>
                 <TableCell colSpan={6} align="center" sx={{ py: 3, color: 'text.disabled' }}>
-                  No open positions. Executed orders will appear here.
+                  No positions. Executed orders will appear here.
                 </TableCell>
               </TableRow>
             )}

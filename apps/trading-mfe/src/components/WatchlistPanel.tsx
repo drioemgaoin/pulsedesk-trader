@@ -9,18 +9,16 @@ import {
 import { useDispatch, useSelector } from "react-redux";
 import {
   Box,
-  InputAdornment,
   Skeleton,
   Table,
   TableBody,
   TableCell,
   TableHead,
   TableRow,
-  TextField,
   Tooltip,
   Typography,
-} from "@mui/material";
-import SearchIcon from "@mui/icons-material/Search";
+  SearchField,
+} from '@pulsedesk/ui';
 import type {
   MarketTick,
   WatchlistSnapshot,
@@ -137,7 +135,7 @@ export const WatchlistPanel = forwardRef<
           flexShrink: 0,
         }}
       >
-        <TextField
+        <SearchField
           inputRef={searchRef}
           size="small"
           placeholder="Filter symbols…"
@@ -151,13 +149,6 @@ export const WatchlistPanel = forwardRef<
             }
           }}
           inputProps={{ "aria-label": "Filter symbols" }}
-          InputProps={{
-            startAdornment: (
-              <InputAdornment position="start">
-                <SearchIcon sx={{ fontSize: 13, color: "text.disabled" }} />
-              </InputAdornment>
-            ),
-          }}
           fullWidth
         />
       </Box>
@@ -176,7 +167,7 @@ export const WatchlistPanel = forwardRef<
             color="text.secondary"
             sx={{ display: "block", p: 2 }}
           >
-            {search ? "No symbols match." : "Waiting for market data…"}
+            {search ? "No symbols match filter." : "Waiting for market data…"}
           </Typography>
         ) : (
           <Table
