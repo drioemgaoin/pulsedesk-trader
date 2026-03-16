@@ -85,13 +85,30 @@ function createStoryStore(params?: StoryProviderParams, themeMode: ThemeMode = '
   return store;
 }
 
+// Module-level mount counter per story ID.
+// Decorators are not remounted when the Storybook toolbar "Remount component" button is clicked —
+// only the Story itself remounts. Using useState's initializer to increment this counter on each
+// mount lets useMemo detect a remount and create a fresh QueryClient / Redux store.
+const mountCounts: Record<string, number> = {};
+
 export const withProviders: Decorator = (Story, context) => {
   const params = (context.parameters?.storyProviders ?? {}) as StoryProviderParams;
   const themeMode = toMode(context.globals?.['colorMode']);
 
-  const store = React.useMemo(() => createStoryStore(params, themeMode), [context.id, themeMode]);
+  // Incremented once per decorator mount (also on remount, since useState initializer runs fresh)
+  const [mountKey] = React.useState(() => {
+    mountCounts[context.id] = (mountCounts[context.id] ?? 0) + 1;
+    return mountCounts[context.id];
+  });
 
-  // Fresh QueryClient per story — prevents React Query cache leakage between stories
+  const store = React.useMemo(
+    () => createStoryStore(params, themeMode),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [context.id, mountKey, themeMode],
+  );
+
+  // Fresh QueryClient per story AND per remount — prevents cache leakage between stories
+  // and ensures "Remount component" reloads data from scratch.
   const queryClient = React.useMemo(
     () =>
       new QueryClient({
@@ -106,8 +123,9 @@ export const withProviders: Decorator = (Story, context) => {
           },
           mutations: { retry: false },
         },
-        }),
-    [context.id],
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [context.id, mountKey],
   );
 
   return (
