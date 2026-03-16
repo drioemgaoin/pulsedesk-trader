@@ -388,7 +388,7 @@ export default function OrdersPage() {
                         fontWeight: 700,
                         letterSpacing: '0.07em',
                         textTransform: 'uppercase',
-                        color: 'text.secondary',
+                        color: 'text.disabled',
                         py: 1,
                         ...responsiveDisplay[header.id],
                       }}

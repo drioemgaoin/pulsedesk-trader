@@ -609,6 +609,7 @@ export default function TradingTerminalPage() {
           flexShrink: 0,
           overflow: "hidden",
           height: bottomOpen ? BOTTOM_PANEL_HEIGHT + 37 : 37,
+          transition: "height 300ms cubic-bezier(0.4, 0, 0.2, 1)",
         }}
       >
         <BlotterPanel
