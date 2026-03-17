@@ -7,6 +7,7 @@ export interface RowDetailProps {
 }
 
 export function RowDetail({ order }: RowDetailProps) {
+  if (!order) return null;
   return (
     <Box
       sx={{

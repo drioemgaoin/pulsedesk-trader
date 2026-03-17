@@ -6,191 +6,244 @@ const meta: Meta<typeof Button> = {
   title: 'Atoms/Button',
   component: Button,
   tags: ['autodocs'],
-  parameters: { layout: 'padded' },
+  parameters: {
+    layout: 'padded',
+    docs: {
+      description: {
+        component: `
+## Button
+
+The primary action trigger across the entire platform. Every user-initiated operation — placing an order, confirming a dialog, submitting a form — is expressed through a Button.
+
+---
+
+### Why this component exists
+
+Trading interfaces demand instant recognition of action hierarchy. When a user scans a panel under pressure, they must know in one glance which button executes a trade, which one is secondary, and which one is a low-commitment option. The three-variant system (contained → outlined → text) enforces that hierarchy without requiring designers to make ad-hoc colour decisions.
+
+---
+
+### Variants — action hierarchy
+
+| Variant | Role | When to use |
+|---|---|---|
+| **Contained** | Primary action | The single most important action on the screen. One contained button per context. e.g. *Place Order*, *Confirm*, *Save* |
+| **Outlined** | Secondary action | A valid alternative that is less urgent than the primary. e.g. *Edit*, *Export*, *Preview* |
+| **Text** | Tertiary / ghost | Low-commitment options, cancel paths, or inline links that warrant button semantics. e.g. *Cancel*, *Skip*, *Learn more* |
+
+---
+
+### Semantic colors — intent signalling
+
+| Color | Semantic meaning | Example |
+|---|---|---|
+| **Primary** | Brand / neutral action | Default for most actions |
+| **Success** | Confirms a positive outcome | *Confirm Buy*, *Order Filled* |
+| **Error** | Destructive or irreversible action | *Cancel Order*, *Delete*, *Close Position* |
+| **Warning** | Caution — action has side effects | *Force Close*, *Override* |
+| **Info** | Informational or neutral follow-up | *View Details*, *Show Log* |
+
+---
+
+### States
+
+- **Default** — resting appearance.
+- **Hover** — subtle background shift signals interactivity before the click.
+- **Focus** — keyboard-navigation ring added on top of the default appearance. No background change — focus is an *additive* indicator.
+- **Active / Pressed** — visibly filled/darkened to confirm the click moment. Loading reuses this appearance.
+- **Disabled** — greyed out, non-interactive. Use sparingly: prefer hiding unavailable actions over disabling them.
+- **Loading** — holds the active/pressed appearance while an async operation runs. Communicates "we received your click" without a jarring layout shift.
+
+---
+
+### Accessibility
+
+Buttons are \`<button>\` elements — fully keyboard navigable via Tab / Space / Enter. The focus ring is intentionally distinct from hover so keyboard users always know where focus is without a mouse. The loading state sets \`aria-busy\` automatically.
+
+---
+
+### Do / Don't
+
+- ✅ One contained button per view or modal — it represents the primary intent.
+- ✅ Match the semantic color to the consequence of the action, not the brand.
+- ❌ Don't use a Button for navigation — use a Link or NavBar item.
+- ❌ Don't disable a button to hide unavailable actions in time-sensitive UIs; show/hide instead.
+        `,
+      },
+    },
+  },
 };
 export default meta;
 type Story = StoryObj<typeof Button>;
 
-// ─── Baseline ────────────────────────────────────────────────────────────────
+// ─── Shared constants ─────────────────────────────────────────────────────────
 
-export const Default: Story = {
-  args: { children: 'Click me', variant: 'contained' },
-};
-
-export const AllVariants: Story = {
-  render: () => (
-    <Stack spacing={3}>
-      {(['contained', 'outlined', 'text'] as const).map((variant) => (
-        <Stack key={variant} direction="row" spacing={2} alignItems="center">
-          {(['small', 'medium', 'large'] as const).map((size) => (
-            <Button key={size} variant={variant} size={size}>
-              {variant} {size}
-            </Button>
-          ))}
-        </Stack>
-      ))}
-    </Stack>
-  ),
-};
-
-// ─── Individual states (CSS pseudo-states forced by addon) ───────────────────
-
-export const Hover: Story = {
-  args: { children: 'Hover', variant: 'contained' },
-  parameters: { pseudo: { hover: true } },
-};
-
-export const FocusVisible: Story = {
-  args: { children: 'Focus', variant: 'contained', className: 'Mui-focusVisible' },
-  parameters: { pseudo: { focusVisible: true } },
-};
-
-export const Active: Story = {
-  args: { children: 'Active', variant: 'contained' },
-  parameters: { pseudo: { active: true } },
-};
-
-export const Disabled: Story = {
-  args: { children: 'Disabled', variant: 'contained', disabled: true },
-};
-
-export const Loading: Story = {
-  args: { children: 'Loading', variant: 'contained', loading: true },
-};
-
-// ─── All states × variants matrix ────────────────────────────────────────────
-
-const STATE_LABELS = ['Default', 'Hover', 'Focus', 'Active', 'Disabled', 'Loading'] as const;
 const VARIANTS = ['contained', 'outlined', 'text'] as const;
+const COLORS   = ['primary', 'success', 'error', 'warning', 'info'] as const;
 
-/** Static matrix — hover/active rows use Mui class overrides where possible. */
-export const AllStates: Story = {
-  render: () => (
-    <Stack spacing={1}>
-      {/* header */}
-      <Stack direction="row" spacing={0}>
-        <Box sx={{ width: 80 }} />
-        {VARIANTS.map((v) => (
-          <Box key={v} sx={{ width: 120, textAlign: 'center' }}>
-            <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'capitalize' }}>{v}</Typography>
+type ButtonVariant = typeof VARIANTS[number];
+type ButtonColor   = typeof COLORS[number];
+
+// ─── StateMatrix ──────────────────────────────────────────────────────────────
+// Renders a variants (rows) × colors (columns) grid for a given state.
+// Extra props (disabled, loading, className) are forwarded to every button.
+
+const COL_W = 128; // button cell width — wide enough to contain the focus ring
+
+function StateMatrix(stateProps: Omit<React.ComponentProps<typeof Button>, 'variant' | 'color' | 'children'>) {
+  return (
+    <Stack spacing={0}>
+      {/* column headers */}
+      <Stack direction="row">
+        <Box sx={{ width: 96, flexShrink: 0 }} />
+        {COLORS.map((color) => (
+          <Box key={color} sx={{ width: COL_W, pl: '8px' }}>
+            <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'capitalize' }}>
+              {color}
+            </Typography>
           </Box>
         ))}
       </Stack>
-      {STATE_LABELS.map((state) => (
-        <Stack key={state} direction="row" spacing={0} alignItems="center">
-          <Box sx={{ width: 80 }}>
-            <Typography variant="caption" color="text.secondary">{state}</Typography>
+
+      {/* one row per variant */}
+      {VARIANTS.map((variant: ButtonVariant) => (
+        <Stack key={variant} direction="row" alignItems="center">
+          <Box sx={{ width: 96, flexShrink: 0 }}>
+            <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'capitalize' }}>
+              {variant}
+            </Typography>
           </Box>
-          {VARIANTS.map((variant) => (
-            <Box key={variant} sx={{ width: 120, display: 'flex', justifyContent: 'center' }}>
-              <Button
-                variant={variant}
-                disabled={state === 'Disabled'}
-                loading={state === 'Loading'}
-                className={state === 'Focus' ? 'Mui-focusVisible' : undefined}
-              >
-                {state}
+          {COLORS.map((color: ButtonColor) => (
+            // p: 1 (8px) gives the box-shadow / focus ring room on all sides
+            <Box key={color} sx={{ width: COL_W, p: '8px' }}>
+              <Button variant={variant} color={color} {...stateProps}>
+                {color}
               </Button>
             </Box>
           ))}
         </Stack>
       ))}
-      <Typography variant="caption" color="text.secondary" sx={{ mt: 1 }}>
-        * Hover and Active states shown in dedicated stories (CSS pseudo-states)
-      </Typography>
     </Stack>
-  ),
+  );
+}
+
+// ─── State stories ────────────────────────────────────────────────────────────
+
+export const Default: Story = {
+  render: () => <StateMatrix />,
+};
+
+export const Hover: Story = {
+  parameters: { pseudo: { hover: true } },
+  render: () => <StateMatrix />,
+};
+
+export const FocusVisible: Story = {
+  parameters: { pseudo: { focusVisible: true } },
+  render: () => <StateMatrix className="Mui-focusVisible" />,
+};
+
+export const Active: Story = {
+  parameters: { pseudo: { active: true } },
+  render: () => <StateMatrix />,
+};
+
+export const Disabled: Story = {
+  render: () => <StateMatrix disabled />,
+};
+
+export const Loading: Story = {
+  render: () => <StateMatrix loading />,
 };
 
 // ─── State combinations ───────────────────────────────────────────────────────
 
-/** Hover while focused (tabbing to a button then moving the mouse over it) */
 export const HoverFocus: Story = {
-  render: () => (
-    <Stack direction="row" spacing={2}>
-      {VARIANTS.map((v) => (
-        <Button key={v} variant={v} className="Mui-focusVisible">{v}</Button>
-      ))}
-    </Stack>
-  ),
+  name: 'Hover + Focus',
   parameters: { pseudo: { hover: true, focusVisible: true } },
+  render: () => <StateMatrix className="Mui-focusVisible" />,
 };
 
-/** Active while focused (pressing Enter/Space on a focused button) */
 export const ActiveFocus: Story = {
-  render: () => (
-    <Stack direction="row" spacing={2}>
-      {VARIANTS.map((v) => (
-        <Button key={v} variant={v} className="Mui-focusVisible">{v}</Button>
-      ))}
-    </Stack>
-  ),
+  name: 'Active + Focus',
   parameters: { pseudo: { active: true, focusVisible: true } },
+  render: () => <StateMatrix className="Mui-focusVisible" />,
 };
 
-/** Hover + Active (mouse pressed while hovering — the click moment) */
 export const HoverActive: Story = {
-  render: () => (
-    <Stack direction="row" spacing={2}>
-      {VARIANTS.map((v) => (
-        <Button key={v} variant={v}>{v}</Button>
-      ))}
-    </Stack>
-  ),
+  name: 'Hover + Active',
   parameters: { pseudo: { hover: true, active: true } },
+  render: () => <StateMatrix />,
 };
 
-// ─── Hover across variants ────────────────────────────────────────────────────
+// ─── Sizes ────────────────────────────────────────────────────────────────────
+// Each size gets its own section; within each section variants are columns so
+// buttons have room to breathe and large buttons never overlap.
 
-export const HoverAllVariants: Story = {
+const SIZE_COL_WIDTH: Record<string, number> = { small: 120, medium: 150, large: 185 };
+
+export const Sizes: Story = {
   render: () => (
-    <Stack direction="row" spacing={2}>
-      {VARIANTS.map((variant) => (
-        <Button key={variant} variant={variant}>{variant}</Button>
+    <Stack spacing={4}>
+      {(['small', 'medium', 'large'] as const).map((size) => (
+        <Stack key={size} spacing={1}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ fontWeight: 600, textTransform: 'capitalize' }}
+          >
+            {size}
+          </Typography>
+          <Stack direction="row" spacing={3}>
+            {VARIANTS.map((variant) => (
+              <Stack key={variant} sx={{ width: SIZE_COL_WIDTH[size] }}>
+                <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'capitalize', mb: '4px' }}>
+                  {variant}
+                </Typography>
+                <Stack>
+                  {COLORS.map((color) => (
+                    <Box key={color} sx={{ p: '8px' }}>
+                      <Button variant={variant} color={color} size={size} fullWidth>
+                        {color}
+                      </Button>
+                    </Box>
+                  ))}
+                </Stack>
+              </Stack>
+            ))}
+          </Stack>
+        </Stack>
       ))}
     </Stack>
   ),
-  parameters: { pseudo: { hover: true } },
 };
 
-export const ActiveAllVariants: Story = {
-  render: () => (
-    <Stack direction="row" spacing={2}>
-      {VARIANTS.map((variant) => (
-        <Button key={variant} variant={variant}>{variant}</Button>
-      ))}
-    </Stack>
-  ),
-  parameters: { pseudo: { active: true } },
-};
-
-// ─── Semantic colors ──────────────────────────────────────────────────────────
-
-export const SemanticColors: Story = {
-  render: () => (
-    <Stack direction="row" spacing={2} flexWrap="wrap">
-      {(['primary', 'success', 'error', 'warning', 'info'] as const).map((color) => (
-        <Button key={color} variant="contained" color={color}>{color}</Button>
-      ))}
-    </Stack>
-  ),
-};
-
-export const SemanticColorsHover: Story = {
-  render: () => (
-    <Stack direction="row" spacing={2} flexWrap="wrap">
-      {(['primary', 'success', 'error', 'warning', 'info'] as const).map((color) => (
-        <Button key={color} variant="contained" color={color}>{color}</Button>
-      ))}
-    </Stack>
-  ),
-  parameters: { pseudo: { hover: true } },
-};
+// ─── Full width ───────────────────────────────────────────────────────────────
+// Each variant gets its own column so the fill effect is clearly visible.
 
 export const FullWidth: Story = {
   render: () => (
-    <Box sx={{ maxWidth: 320 }}>
-      <Button variant="contained" fullWidth>Full Width</Button>
-    </Box>
+    <Stack direction="row" spacing={3}>
+      {VARIANTS.map((variant) => (
+        <Stack key={variant} sx={{ width: 220 }}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            sx={{ textTransform: 'capitalize', fontWeight: 600, mb: '4px' }}
+          >
+            {variant}
+          </Typography>
+          <Stack>
+            {COLORS.map((color) => (
+              <Box key={color} sx={{ p: '8px' }}>
+                <Button variant={variant} color={color} fullWidth>
+                  {color}
+                </Button>
+              </Box>
+            ))}
+          </Stack>
+        </Stack>
+      ))}
+    </Stack>
   ),
 };

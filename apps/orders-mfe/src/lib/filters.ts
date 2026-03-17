@@ -45,6 +45,26 @@ export function buildQueryString(
   return `?${params.toString()}`;
 }
 
+/**
+ * Client-side filter applied on top of the API response.
+ * The backend does not implement all filter params, so we post-filter locally.
+ */
+export function applyClientFilters<T extends {
+  side: OrderSide;
+  symbol: string;
+  status: OrderStatus;
+  createdAt: string;
+}>(orders: T[], filters: OrderFilters): T[] {
+  return orders.filter((o) => {
+    if (filters.side !== 'ALL' && o.side !== filters.side) return false;
+    if (filters.symbols.length > 0 && !filters.symbols.includes(o.symbol)) return false;
+    if (filters.statuses.length > 0 && !filters.statuses.includes(o.status)) return false;
+    if (filters.dateFrom && o.createdAt < filters.dateFrom) return false;
+    if (filters.dateTo && o.createdAt > filters.dateTo + 'T23:59:59') return false;
+    return true;
+  });
+}
+
 export function hasActiveFilters(filters: OrderFilters): boolean {
   return (
     filters.statuses.length > 0 ||

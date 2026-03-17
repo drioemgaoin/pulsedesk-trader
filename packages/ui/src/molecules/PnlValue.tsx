@@ -22,6 +22,7 @@ export interface PnlValueProps {
  *   <PnlValue value={-500}    pct={-1.1} />       // -$500.00 (-1.10%)
  */
 export function PnlValue({ value, pct, variant = 'body2', sx }: PnlValueProps) {
+  if (value == null) return null;
   const positive = value >= 0;
   const color    = positive ? 'trading.uptick' : 'trading.downtick';
   const prefix   = positive ? '+' : '';

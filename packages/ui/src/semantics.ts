@@ -38,6 +38,8 @@ export const PD_BG_SURFACE  = 'var(--pd-bg-surface)'  as const;
 export const PD_BG_RAISED   = 'var(--pd-bg-raised)'   as const;
 /** Dialog / modal overlay background. */
 export const PD_BG_OVERLAY  = 'var(--pd-bg-overlay)'  as const;
+/** Skeleton placeholder background — visible in both dark and light modes. */
+export const PD_SKELETON_BG = 'var(--pd-skeleton-bg)' as const;
 
 /* ── Borders ──────────────────────────────────────────────────────────── */
 

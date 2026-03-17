@@ -1,3 +1,6 @@
+/** Base spacing unit in px — mirrors MUI theme `spacing` multiplier. */
+export const SPACING_BASE: number;
+
 export type BrandMode = "dark" | "light";
 
 export interface BrandModeValues {

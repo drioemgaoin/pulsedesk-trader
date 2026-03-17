@@ -1,11 +1,21 @@
 /**
- * Single source of truth for brand/theme colors used by:
+ * Single source of truth for brand/theme values used by:
  * - src/theme.ts (MUI palette + component overrides)
+ * - src/tokens.ts (SIZES scale, spacing-derived constants)
  * - src/tokens.css (generated via scripts/generate-tokens-css.mjs)
  *
  * Edit values here, then run:
  *   pnpm -C packages/ui tokens:generate
  */
+
+/**
+ * Base spacing unit in px. Drives:
+ *   - MUI theme `spacing` multiplier  (theme.spacing(1) = SPACING_BASE px)
+ *   - SIZES chip label padding in tokens.ts
+ * Change once here → both theme.ts and tokens.ts stay in sync automatically.
+ */
+export const SPACING_BASE = 4;
+
 export const BRAND_THEME = {
   primitives: {
     "navy-950": "#070B14",
@@ -125,6 +135,7 @@ export const BRAND_THEME = {
       shadowElevation1: "0 2px 8px rgba(0,0,0,0.40)",
       shadowElevation4: "0 4px 20px rgba(0,0,0,0.50)",
       shadowTooltip: "0 4px 12px rgba(0,0,0,0.40)",
+      skeletonBg: "#1E2D45",
       skeletonShimmer:
         "linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent)",
 
@@ -194,6 +205,7 @@ export const BRAND_THEME = {
       shadowElevation1: "0 2px 8px rgba(0,0,0,0.12)",
       shadowElevation4: "0 4px 20px rgba(0,0,0,0.16)",
       shadowTooltip: "0 4px 12px rgba(0,0,0,0.12)",
+      skeletonBg: "#DDD8CC",
       skeletonShimmer:
         "linear-gradient(90deg, transparent, rgba(0,0,0,0.04), transparent)",
 

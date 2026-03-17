@@ -1,14 +1,14 @@
-import React from 'react';
-import Box from '@mui/material/Box';
-import Typography from '@mui/material/Typography';
-import Tooltip from '@mui/material/Tooltip';
-import type { SxProps } from '@mui/material';
+import React from "react";
+import Box from "@mui/material/Box";
+import Typography from "@mui/material/Typography";
+import Tooltip from "@mui/material/Tooltip";
+import type { SxProps } from "@mui/material";
 
 export interface StatCellProps {
   label: string;
   value: React.ReactNode;
   tooltip?: string;
-  tooltipPlacement?: 'top' | 'bottom' | 'left' | 'right';
+  tooltipPlacement?: "top" | "bottom" | "left" | "right";
   sx?: SxProps;
 }
 
@@ -26,27 +26,31 @@ export function StatCell({
   label,
   value,
   tooltip,
-  tooltipPlacement = 'bottom',
+  tooltipPlacement = "bottom",
   sx,
 }: StatCellProps) {
   const content = (
-    <Box sx={{ cursor: tooltip ? 'default' : 'auto', ...sx }}>
+    <Box sx={{ cursor: tooltip ? "default" : "auto", ...sx }}>
       <Typography
         display="block"
         lineHeight={1}
         sx={{
-          fontSize:      '0.625rem',
-          letterSpacing: '0.06em',
-          textTransform: 'uppercase',
-          color:         'text.disabled',
-          mb:            0.5,
+          fontSize: "0.625rem",
+          letterSpacing: "0.06em",
+          textTransform: "uppercase",
+          color: "text.disabled",
+          mb: 2,
         }}
       >
         {label}
       </Typography>
       <Typography
         variant="body2"
-        sx={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, lineHeight: 1 }}
+        sx={{
+          fontVariantNumeric: "tabular-nums",
+          fontWeight: 600,
+          lineHeight: 1,
+        }}
       >
         {value}
       </Typography>
@@ -57,5 +61,7 @@ export function StatCell({
     <Tooltip title={tooltip} placement={tooltipPlacement}>
       {content}
     </Tooltip>
-  ) : content;
+  ) : (
+    content
+  );
 }

@@ -1,71 +1,71 @@
+import React from "react";
 import {
   Autocomplete,
   Box,
   Chip,
+  Divider,
   Stack,
   TextField,
   ToggleButton,
   ToggleButtonGroup,
   Typography,
-  FilterChip,
   tradeSideToggleSx,
-} from '@pulsedesk/ui';
-import { ALL_STATUSES, KNOWN_SYMBOLS } from '../lib/filters';
-import type { OrderFilters, OrderStatus } from '../lib/filters';
+} from "@pulsedesk/ui";
+import { KNOWN_SYMBOLS } from "../lib/filters";
+import type { OrderFilters } from "../lib/filters";
 
 export interface SideFilterProps {
   filters: OrderFilters;
   onChange: (filters: OrderFilters) => void;
 }
 
-export function SideFilter({ filters, onChange }: SideFilterProps) {
-  function toggleStatus(status: OrderStatus) {
-    const next = filters.statuses.includes(status)
-      ? filters.statuses.filter((s) => s !== status)
-      : [...filters.statuses, status];
-    onChange({ ...filters, statuses: next });
-  }
+// ─── Section label ────────────────────────────────────────────────────────────
 
+function SectionLabel({ children }: { children: React.ReactNode }) {
   return (
-    <Stack spacing={3}>
-      <Box>
-        <Typography variant="caption" color="text.secondary" gutterBottom display="block">
-          Status
-        </Typography>
-        <Stack direction="row" flexWrap="wrap" gap={0.5}>
-          {ALL_STATUSES.map((s) => (
-            <FilterChip
-              key={s}
-              status={s}
-              isActive={filters.statuses.includes(s)}
-              onClick={() => toggleStatus(s)}
-            />
-          ))}
-        </Stack>
-      </Box>
+    <Typography
+      variant="overline"
+      color="text.disabled"
+      sx={{ display: "block", mb: 2, lineHeight: 1, letterSpacing: "0.1em" }}
+    >
+      {children}
+    </Typography>
+  );
+}
 
-      <Box>
-        <Typography variant="caption" color="text.secondary" gutterBottom display="block">
-          Side
-        </Typography>
+// ─── SideFilter ───────────────────────────────────────────────────────────────
+// Secondary filters rendered in the "More Filters" drawer.
+// Status is intentionally excluded — it lives in the primary filter bar.
+
+export function SideFilter({ filters, onChange }: SideFilterProps) {
+  return (
+    <Stack divider={<Divider />}>
+      {/* ── Side ── */}
+      <Box sx={{ py: 3 }}>
+        <SectionLabel>Side</SectionLabel>
         <ToggleButtonGroup
           size="small"
           exclusive
           fullWidth
           value={filters.side}
-          onChange={(_, v) => { if (v) onChange({ ...filters, side: v }); }}
+          onChange={(_, v) => {
+            if (v) onChange({ ...filters, side: v });
+          }}
           aria-label="side filter"
         >
           <ToggleButton value="ALL">All</ToggleButton>
-          <ToggleButton value="BUY" sx={tradeSideToggleSx('BUY')}>Buy</ToggleButton>
-          <ToggleButton value="SELL" sx={tradeSideToggleSx('SELL')}>Sell</ToggleButton>
+          <ToggleButton value="BUY" sx={tradeSideToggleSx("BUY")}>
+            Buy
+          </ToggleButton>
+          <ToggleButton value="SELL" sx={tradeSideToggleSx("SELL")}>
+            Sell
+          </ToggleButton>
         </ToggleButtonGroup>
       </Box>
 
-      <Box>
-        <Typography variant="caption" color="text.secondary" gutterBottom display="block">
-          Symbol
-        </Typography>
+      {/* ── Symbol ── */}
+      <Box sx={{ py: 3 }}>
+        <SectionLabel>Symbol</SectionLabel>
         <Autocomplete
           multiple
           size="small"
@@ -75,29 +75,41 @@ export function SideFilter({ filters, onChange }: SideFilterProps) {
           renderInput={(params) => (
             <TextField
               {...params}
-              placeholder="Any symbol"
-              inputProps={{ ...params.inputProps, 'aria-label': 'symbol filter' }}
+              placeholder={filters.symbols.length === 0 ? "Any symbol" : ""}
+              slotProps={{
+                htmlInput: {
+                  ...params.inputProps,
+                  "aria-label": "symbol filter",
+                },
+              }}
             />
           )}
           renderTags={(value, getTagProps) =>
             value.map((option, index) => (
-              <Chip label={option} size="small" {...getTagProps({ index })} key={option} />
+              <Chip
+                label={option}
+                size="small"
+                {...getTagProps({ index })}
+                key={option}
+              />
             ))
           }
+          sx={{ mt: 3 }}
         />
       </Box>
 
-      <Box>
-        <Typography variant="caption" color="text.secondary" gutterBottom display="block">
-          Date Range
-        </Typography>
-        <Stack spacing={1}>
+      {/* ── Date Range ── */}
+      <Box sx={{ py: 3 }}>
+        <SectionLabel>Date Range</SectionLabel>
+        <Stack spacing={5} sx={{ mt: 5 }}>
           <TextField
             size="small"
             label="From"
             type="date"
-            InputLabelProps={{ shrink: true }}
-            inputProps={{ 'aria-label': 'date from' }}
+            slotProps={{
+              inputLabel: { shrink: true },
+              htmlInput: { "aria-label": "date from" },
+            }}
             value={filters.dateFrom}
             onChange={(e) => onChange({ ...filters, dateFrom: e.target.value })}
           />
@@ -105,8 +117,10 @@ export function SideFilter({ filters, onChange }: SideFilterProps) {
             size="small"
             label="To"
             type="date"
-            InputLabelProps={{ shrink: true }}
-            inputProps={{ 'aria-label': 'date to' }}
+            slotProps={{
+              inputLabel: { shrink: true },
+              htmlInput: { "aria-label": "date to" },
+            }}
             value={filters.dateTo}
             onChange={(e) => onChange({ ...filters, dateTo: e.target.value })}
           />

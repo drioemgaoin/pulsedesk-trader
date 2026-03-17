@@ -34,7 +34,7 @@ import {
   tableRowSx,
 } from '@pulsedesk/ui';
 import { useOrdersQuery, PAGE_SIZE } from './hooks/useOrdersQuery';
-import { DEFAULT_FILTERS, hasActiveFilters, ALL_STATUSES } from './lib/filters';
+import { DEFAULT_FILTERS, hasActiveFilters, applyClientFilters, ALL_STATUSES } from './lib/filters';
 import { downloadOrdersCsv } from './lib/csvExport';
 import { RowDetail } from './components/RowDetail';
 import { SideFilter } from './components/SideFilter';
@@ -121,7 +121,8 @@ export default function OrdersPage() {
 
   const { data, isLoading, isError, error } = useOrdersQuery(page, debouncedFilters);
 
-  const orders = data?.orders ?? [];
+  const rawOrders = data?.orders ?? [];
+  const orders = applyClientFilters(rawOrders, filters);
   const total = data?.pagination.total ?? 0;
   const secondaryCount = countSecondaryFilters(filters);
 
@@ -396,7 +397,12 @@ export default function OrdersPage() {
       >
         <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
           <Stack direction="row" alignItems="center" justifyContent="space-between">
-            <Typography variant="subtitle1" fontWeight={600}>More Filters</Typography>
+            <Box>
+              <Typography variant="subtitle1" fontWeight={600}>More Filters</Typography>
+              <Typography variant="caption" color="text.secondary">
+                {isLoading ? 'Loading…' : `${orders.length.toLocaleString()} ${orders.length === 1 ? 'order' : 'orders'} match`}
+              </Typography>
+            </Box>
             {secondaryCount > 0 && (
               <Button
                 size="small"
@@ -409,7 +415,6 @@ export default function OrdersPage() {
           </Stack>
         </Box>
 
-        {/* Reuse FilterPanel but hide its status section since we handle that inline */}
         <Box sx={{ p: 2 }}>
           <SideFilter filters={filters} onChange={handleFiltersChange} />
         </Box>

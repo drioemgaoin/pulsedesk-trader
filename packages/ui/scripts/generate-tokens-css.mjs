@@ -64,6 +64,7 @@ function modeBlock(mode, c) {
     `  --pd-appbar-border: ${c.appbarBorder};`,
     `  --pd-scrollbar-thumb: ${cssColor(c.scrollbarThumb)};`,
     `  --pd-text-on-status: ${cssColor(c.textOnStatus)};`,
+    `  --pd-skeleton-bg: ${cssColor(c.skeletonBg)};`,
     `}`,
   ].join("\n");
 }

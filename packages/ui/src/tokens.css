@@ -85,8 +85,8 @@
   --pd-status-pending-muted: rgba(224,150,58,0.08);
   --pd-status-pending-muted-strong: rgba(224,150,58,0.16);
   --pd-status-neutral: var(--pd-p-navy-400);
-  --pd-status-cancelled: #475569;
-  --pd-status-partial: #0891B2;
+  --pd-status-cancelled: var(--pd-p-slate-600);
+  --pd-status-partial: var(--pd-p-cyan-600);
   --pd-table-zebra: rgba(255,255,255,0.022);
   --pd-table-hover: rgba(255,255,255,0.055);
 
@@ -98,6 +98,7 @@
   --pd-appbar-border: rgba(245,158,11,0.14);
   --pd-scrollbar-thumb: var(--pd-p-navy-700);
   --pd-text-on-status: var(--pd-p-white);
+  --pd-skeleton-bg: var(--pd-p-navy-700);
 }
 
 [data-theme="light"] {
@@ -133,8 +134,8 @@
   --pd-status-pending-muted: rgba(192,112,32,0.08);
   --pd-status-pending-muted-strong: rgba(192,112,32,0.16);
   --pd-status-neutral: var(--pd-p-navy-400);
-  --pd-status-cancelled: #475569;
-  --pd-status-partial: #0891B2;
+  --pd-status-cancelled: var(--pd-p-slate-600);
+  --pd-status-partial: var(--pd-p-cyan-600);
   --pd-table-zebra: rgba(0,0,0,0.028);
   --pd-table-hover: rgba(0,0,0,0.055);
 
@@ -146,6 +147,7 @@
   --pd-appbar-border: rgba(180,83,9,0.14);
   --pd-scrollbar-thumb: var(--pd-p-parchment-400);
   --pd-text-on-status: var(--pd-p-white);
+  --pd-skeleton-bg: var(--pd-p-parchment-300);
 }
 
 *, *::before, *::after {

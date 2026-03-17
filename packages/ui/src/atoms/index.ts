@@ -11,7 +11,6 @@ export {
   Card,
   CardContent,
   Checkbox,
-  Chip,
   CircularProgress,
   Collapse,
   CssBaseline,
@@ -58,8 +57,10 @@ export {
   useTheme,
 } from '@mui/material';
 
+export { Chip } from './Chip';
+export type { ChipProps } from './Chip';
+
 export type {
-  ChipProps,
   TextFieldProps,
   ButtonProps,
   ToggleButtonProps,

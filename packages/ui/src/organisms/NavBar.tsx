@@ -34,6 +34,7 @@ export interface NavBarProps {
  * used with any router (or without one, e.g. in Storybook).
  */
 export function NavBar({ navLinks, username, themeMode, onToggleTheme, onLogout }: NavBarProps) {
+  if (!navLinks) return null;
   return (
     <AppBar position="static" component="header">
       <Toolbar variant="dense" sx={{ gap: 0, minHeight: 48 }}>

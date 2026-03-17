@@ -14,7 +14,76 @@ const meta: Meta<typeof NavBar> = {
   title: 'Organisms/NavBar',
   component: NavBar,
   tags: ['autodocs'],
-  parameters: { layout: 'fullscreen' },
+  parameters: {
+    layout: 'fullscreen',
+    docs: {
+      description: {
+        component: `
+## NavBar
+
+The persistent top navigation bar that anchors every authenticated page. It contains the brand wordmark, primary navigation links, a live data status indicator, a dark/light mode toggle, and a logout button.
+
+---
+
+### Why this component exists
+
+The trading terminal is a single-page application where users switch between the Terminal, Portfolio, Orders, and Simulator panels rapidly. NavBar is the constant — it stays mounted across all page transitions and provides the global affordances that every page needs: where am I, how do I navigate, is my data live, how do I sign out.
+
+Encapsulating it as a single component ensures all of this is consistent regardless of which page is active.
+
+---
+
+### What NavBar contains
+
+| Section | Content | Behaviour |
+|---|---|---|
+| Left | BrandWordmark | Static brand identity |
+| Left | LiveBadge or PulsingChip | Real-time feed status |
+| Center | Navigation links | Highlight the active page |
+| Right | Theme toggle (IconButton) | Switches dark ↔ light mode |
+| Right | Username | Read-only display of the logged-in user |
+| Right | Logout (IconButton) | Fires \`onLogout\` callback |
+
+---
+
+### Props
+
+- **navLinks** — array of \`{ label, icon, isActive, onClick }\` — one entry per top-level page
+- **username** — logged-in user's display name (omit for anonymous/loading state)
+- **themeMode** — \`'dark' | 'light'\` — controls the theme toggle icon appearance
+- **onToggleTheme** — callback fired when the user clicks the theme toggle
+- **onLogout** — callback fired when the user clicks the logout button
+
+---
+
+### Active link
+
+Exactly one link should have \`isActive: true\` — the currently visible page. The active link receives a distinct visual treatment (filled indicator, higher contrast). If no link is active (e.g. during a page transition), pass \`isActive: false\` on all links.
+
+---
+
+### Feed status
+
+NavBar is responsible for rendering either the \`LiveBadge\` (feed healthy) or a \`PulsingChip\` (feed degraded). The parent application updates the NavBar when the WebSocket connection state changes.
+
+---
+
+### Accessibility
+
+Each navigation link renders as a \`<button>\` with descriptive text. The active link has \`aria-current="page"\`. The theme toggle and logout buttons are wrapped in \`Tooltip\` for accessible labels.
+
+---
+
+### Do / Don't
+
+- ✅ Keep NavBar mounted for the entire authenticated session — do not unmount on page transitions.
+- ✅ Mark exactly one link as active at a time.
+- ❌ Do not add new controls to NavBar without design review — it is already at maximum density.
+- ❌ Do not hide NavBar on any authenticated page — it is the only global navigation affordance.
+        `,
+      },
+    },
+  },
   argTypes: {
     // themeMode is injected by the global withTheme decorator — hide it from
     // the controls panel so developers use the toolbar toggle instead.
@@ -52,9 +121,17 @@ function makeLinks(
 
 export const Default: Story = {
   name: 'Terminal active',
-  args: {
-    navLinks: makeLinks('Terminal', () => {}),
-    username: 'trader',
+  render: (_args, { globals }) => {
+    const mode = globals?.['colorMode'] === 'light' ? 'light' : 'dark';
+    return (
+      <NavBar
+        navLinks={makeLinks('Terminal', () => {})}
+        username="trader"
+        themeMode={mode}
+        onToggleTheme={() => {}}
+        onLogout={() => {}}
+      />
+    );
   },
 };
 
@@ -62,9 +139,17 @@ export const Default: Story = {
 
 export const NoActiveLink: Story = {
   name: 'No active link',
-  args: {
-    navLinks: makeLinks(null, () => {}),
-    username: 'trader',
+  render: (_args, { globals }) => {
+    const mode = globals?.['colorMode'] === 'light' ? 'light' : 'dark';
+    return (
+      <NavBar
+        navLinks={makeLinks(null, () => {})}
+        username="trader"
+        themeMode={mode}
+        onToggleTheme={() => {}}
+        onLogout={() => {}}
+      />
+    );
   },
 };
 
@@ -72,9 +157,16 @@ export const NoActiveLink: Story = {
 
 export const Anonymous: Story = {
   name: 'Anonymous user (no username)',
-  args: {
-    navLinks: makeLinks('Terminal', () => {}),
-    username: undefined,
+  render: (_args, { globals }) => {
+    const mode = globals?.['colorMode'] === 'light' ? 'light' : 'dark';
+    return (
+      <NavBar
+        navLinks={makeLinks('Terminal', () => {})}
+        themeMode={mode}
+        onToggleTheme={() => {}}
+        onLogout={() => {}}
+      />
+    );
   },
 };
 
@@ -87,7 +179,7 @@ export const AllLinksShowcase: Story = {
   render: (_args, { globals }) => {
     const mode = globals?.['colorMode'] === 'light' ? 'light' : 'dark';
     return (
-      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: '1px' }}>
         {BASE_LINKS.map(({ label }) => (
           <NavBar
             key={label}
@@ -130,11 +222,19 @@ export const Interactive: Story = {
 
 export const ExtendedLinks: Story = {
   name: 'Extended links (4 items)',
-  args: {
-    navLinks: [
-      ...makeLinks('Terminal', () => {}),
-      { label: 'Simulator', icon: ScienceIcon, isActive: false, onClick: () => {} },
-    ],
-    username: 'trader',
+  render: (_args, { globals }) => {
+    const mode = globals?.['colorMode'] === 'light' ? 'light' : 'dark';
+    return (
+      <NavBar
+        navLinks={[
+          ...makeLinks('Terminal', () => {}),
+          { label: 'Simulator', icon: ScienceIcon, isActive: false, onClick: () => {} },
+        ]}
+        username="trader"
+        themeMode={mode}
+        onToggleTheme={() => {}}
+        onLogout={() => {}}
+      />
+    );
   },
 };

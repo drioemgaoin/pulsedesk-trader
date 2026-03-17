@@ -93,13 +93,13 @@ export default function LoginPage() {
           <Divider sx={{ mb: 3 }} />
 
           {sessionExpired && (
-            <Alert severity="warning" sx={{ mb: 2 }}>
+            <Alert severity="warning" sx={{ mb: 4 }}>
               Your session expired. Please sign in again.
             </Alert>
           )}
 
           {error && (
-            <Alert severity="error" sx={{ mb: 2 }} role="alert">
+            <Alert severity="error" sx={{ mb: 4 }} role="alert">
               {error}
             </Alert>
           )}

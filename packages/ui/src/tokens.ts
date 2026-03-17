@@ -1,4 +1,7 @@
-import { pd } from './semantics';
+import { SPACING_BASE } from "./brandThemeSource.js";
+import { pd } from "./semantics";
+
+export { SPACING_BASE };
 
 /**
  * @pulsedesk/ui — Shared style constants
@@ -19,26 +22,32 @@ import { pd } from './semantics';
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type OrderStatus =
-  | 'PENDING'
-  | 'ACCEPTED'
-  | 'FILLED'
-  | 'PARTIALLY_FILLED'
-  | 'REJECTED'
-  | 'CANCELLED';
+  | "PENDING"
+  | "ACCEPTED"
+  | "FILLED"
+  | "PARTIALLY_FILLED"
+  | "REJECTED"
+  | "CANCELLED";
 
-export type MuiChipColor = 'default' | 'warning' | 'info' | 'success' | 'error' | 'primary';
+export type MuiChipColor =
+  | "default"
+  | "warning"
+  | "info"
+  | "success"
+  | "error"
+  | "primary";
 
 /**
  * Maps every order status to its MUI Chip colour.
  * Used wherever an order status badge is rendered (BlotterPanel, OrdersPage, …).
  */
 export const ORDER_STATUS_COLORS: Record<OrderStatus, MuiChipColor> = {
-  PENDING:          'warning',
-  ACCEPTED:         'info',
-  FILLED:           'success',
-  PARTIALLY_FILLED: 'default',  // colour applied via partiallyFilledChipSx
-  REJECTED:         'error',
-  CANCELLED:        'default',  // colour applied via cancelledChipSx
+  PENDING: "warning",
+  ACCEPTED: "info",
+  FILLED: "success",
+  PARTIALLY_FILLED: "default", // colour applied via partiallyFilledChipSx
+  REJECTED: "error",
+  CANCELLED: "default", // colour applied via cancelledChipSx
 };
 
 /**
@@ -46,10 +55,10 @@ export const ORDER_STATUS_COLORS: Record<OrderStatus, MuiChipColor> = {
  * Apply to every status Chip that shows an order status.
  */
 export const statusChipSx = {
-  fontSize:      '0.625rem',
-  height:        18,
-  fontWeight:    700,
-  letterSpacing: '0.03em',
+  fontSize: "0.625rem",
+  height: 18,
+  fontWeight: 700,
+  letterSpacing: "0.03em",
 } as const;
 
 /**
@@ -60,9 +69,9 @@ export const statusChipSx = {
  * Compose on top of statusChipSx:  sx={{ ...statusChipSx, ...partiallyFilledChipSx }}
  */
 export const partiallyFilledChipSx = {
-  '&.MuiChip-filled': {
+  "&.MuiChip-filled": {
     backgroundColor: pd.statusPartial,
-    color: '#ffffff',
+    color: "#ffffff",
   },
 };
 
@@ -74,12 +83,11 @@ export const partiallyFilledChipSx = {
  * Compose on top of statusChipSx:  sx={{ ...statusChipSx, ...cancelledChipSx }}
  */
 export const cancelledChipSx = {
-  '&.MuiChip-filled': {
+  "&.MuiChip-filled": {
     backgroundColor: pd.statusCancelled,
-    color: 'rgba(255,255,255,0.85)',
+    color: "rgba(255,255,255,0.85)",
   },
 };
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 2. INTERACTIVE CHIP SX  (filter chips that can be toggled on/off)
@@ -112,25 +120,50 @@ type ThemeCallback<T> = (theme: any) => T;
 export function filterChipSx(isActive: boolean) {
   if (isActive) {
     return {
-      '&:hover':        { outline: '2px solid rgba(255,255,255,0.55)', outlineOffset: '2px' },
-      '&:active':       { filter: 'brightness(0.72)', transform: 'scale(0.95)', outline: 'none' },
-      '&:hover:active': { filter: 'brightness(0.72)', transform: 'scale(0.95)', outline: '2px solid rgba(255,255,255,0.55)', outlineOffset: '2px' },
+      "&:hover": {
+        outline: "2px solid rgba(255,255,255,0.55)",
+        outlineOffset: "2px",
+      },
+      "&:active": {
+        filter: "brightness(0.72)",
+        transform: "scale(0.95)",
+        outline: "none",
+      },
+      "&:hover:active": {
+        filter: "brightness(0.72)",
+        transform: "scale(0.95)",
+        outline: "2px solid rgba(255,255,255,0.55)",
+        outlineOffset: "2px",
+      },
     };
   }
 
-  const bg = (dark: string, light: string): ThemeCallback<string> =>
-    (t) => t.palette.mode === 'dark' ? dark : light;
+  const bg =
+    (dark: string, light: string): ThemeCallback<string> =>
+    (t) =>
+      t.palette.mode === "dark" ? dark : light;
 
   // Fixed rgba ring — works on all chip colours including grey/default (currentColor fails there)
-  const ring = bg('2px solid rgba(255,255,255,0.55)', '2px solid rgba(0,0,0,0.35)');
+  const ring = bg(
+    "2px solid rgba(255,255,255,0.55)",
+    "2px solid rgba(0,0,0,0.35)",
+  );
 
   return {
-    '&:hover':        { outline: ring, outlineOffset: '2px' },
-    '&:active':       { backgroundColor: bg('rgba(255,255,255,0.18)', 'rgba(0,0,0,0.12)'), transform: 'scale(0.95)', outline: 'none' },
-    '&:hover:active': { backgroundColor: bg('rgba(255,255,255,0.18)', 'rgba(0,0,0,0.12)'), transform: 'scale(0.95)', outline: ring, outlineOffset: '2px' },
+    "&:hover": { outline: ring, outlineOffset: "2px" },
+    "&:active": {
+      backgroundColor: bg("rgba(255,255,255,0.18)", "rgba(0,0,0,0.12)"),
+      transform: "scale(0.95)",
+      outline: "none",
+    },
+    "&:hover:active": {
+      backgroundColor: bg("rgba(255,255,255,0.18)", "rgba(0,0,0,0.12)"),
+      transform: "scale(0.95)",
+      outline: ring,
+      outlineOffset: "2px",
+    },
   };
 }
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 3. TRADE SIDE TOGGLE  (was section 3, now kept for reference)
@@ -149,46 +182,47 @@ export function filterChipSx(isActive: boolean) {
  * Chip heights are intentionally smaller (data label, not action target) but
  * scale proportionally.
  *
- *   sm = compact  (toolbars, dense tables, secondary actions)  — 28 px
- *   md = default  (most UI: forms, primary actions)            — 36 px
- *   lg = prominent (hero CTAs, modal footers)                  — 44 px
+ * Scale aligns with IBM Carbon, Atlassian, Adobe Spectrum, and Apple HIG
+ * minimum touch target (44pt) — the most common scale across modern SaaS:
+ *   sm = compact  (toolbars, dense tables, secondary actions)  — 32 px
+ *   md = default  (most UI: forms, primary actions)            — 40 px
+ *   lg = prominent (hero CTAs, modal footers)                  — 48 px
  */
 export const SIZES = {
   sm: {
-    height:           28,
-    fontSize:         '0.75rem',     // 12 px
-    padding:          '3px 12px',
-    togglePadding:    '3px 8px',
-    iconDimension:    28,
-    chipHeight:       20,
-    chipFontSize:     '0.6875rem',   // 11 px
-    chipLabelPadding: '0 8px',
+    height: 32,
+    fontSize: "0.75rem", // 12 px
+    padding: "5px 14px",
+    togglePadding: "5px 10px",
+    iconDimension: 32,
+    chipHeight: 22,
+    chipFontSize: "0.6875rem", // 11 px
+    chipLabelPadding: `0 ${SPACING_BASE * 2}px`, // 8px
     chipBorderRadius: 4,
   },
   md: {
-    height:           36,
-    fontSize:         '0.8125rem',   // 13 px
-    padding:          '6px 16px',
-    togglePadding:    '5px 12px',
-    iconDimension:    36,
-    chipHeight:       24,
-    chipFontSize:     '0.75rem',     // 12 px
-    chipLabelPadding: '0 10px',
+    height: 40,
+    fontSize: "0.8125rem", // 13 px
+    padding: "9px 20px",
+    togglePadding: "9px 16px",
+    iconDimension: 40,
+    chipHeight: 28,
+    chipFontSize: "0.75rem", // 12 px
+    chipLabelPadding: `0 ${SPACING_BASE * 3}px`, // 12px
     chipBorderRadius: 5,
   },
   lg: {
-    height:           44,
-    fontSize:         '0.9375rem',   // 15 px
-    padding:          '10px 24px',
-    togglePadding:    '9px 20px',
-    iconDimension:    44,
-    chipHeight:       32,
-    chipFontSize:     '0.8125rem',   // 13 px
-    chipLabelPadding: '0 14px',
+    height: 48,
+    fontSize: "0.9375rem", // 15 px
+    padding: "12px 28px",
+    togglePadding: "12px 24px",
+    iconDimension: 48,
+    chipHeight: 36,
+    chipFontSize: "0.8125rem", // 13 px
+    chipLabelPadding: `0 ${SPACING_BASE * 4}px`, // 16px
     chipBorderRadius: 6,
   },
 } as const;
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 5. TABLE ROW STYLES — zebra striping + hover
@@ -209,8 +243,8 @@ export const TABLE_HOVER_BG = pd.tableHover;
  *   <TableRow sx={{ ...tableRowSx(index), ...myStatusOverrides }} />
  */
 export const tableRowSx = (index: number) => ({
-  bgcolor: index % 2 === 1 ? TABLE_ZEBRA_BG : 'transparent',
-  '&:hover': { bgcolor: TABLE_HOVER_BG },
+  bgcolor: index % 2 === 1 ? TABLE_ZEBRA_BG : "transparent",
+  "&:hover": { bgcolor: TABLE_HOVER_BG },
 });
 
 /**
@@ -222,11 +256,11 @@ export const tableRowSx = (index: number) => ({
  *   <Table sx={{ ...myTableSx, ...tableZebraTableSx }} />
  */
 export const tableZebraTableSx = {
-  '& .MuiTableBody-root .MuiTableRow-root:nth-of-type(odd):not(.Mui-selected)': {
-    bgcolor: TABLE_ZEBRA_BG,
-  },
+  "& .MuiTableBody-root .MuiTableRow-root:nth-of-type(odd):not(.Mui-selected)":
+    {
+      bgcolor: TABLE_ZEBRA_BG,
+    },
 } as const;
-
 
 // ─────────────────────────────────────────────────────────────────────────────
 // 6. TRADE SIDE TOGGLE  (BUY / SELL ToggleButton)
@@ -248,26 +282,36 @@ export const tableZebraTableSx = {
  * │ Selected hover + active│ dark shade  — white text (pressed while hovering)│
  * └────────────────────────┴──────────────────────────────────────────────────┘
  */
-export function tradeSideToggleSx(side: 'BUY' | 'SELL') {
-  const c = side === 'BUY' ? 'success' : 'error';
+export function tradeSideToggleSx(side: "BUY" | "SELL") {
+  const c = side === "BUY" ? "success" : "error";
   return {
-    color:       `${c}.main`,
+    color: `${c}.main`,
     borderColor: `${c}.main`,
-    '&:hover:not(.Mui-selected)':       { bgcolor: `${c}.main`,  color: `${c}.contrastText` },
-    '&:active:not(.Mui-selected)':      { bgcolor: `${c}.dark`,  color: `${c}.contrastText` },
-    '&:hover:active:not(.Mui-selected)':{ bgcolor: `${c}.dark`,  color: `${c}.contrastText` },
-    '&.Mui-selected': {
-      bgcolor:     `${c}.main`,
-      color:       `${c}.contrastText`,
-      borderColor: `${c}.main`,
-      '&:hover':        { bgcolor: `${c}.light`, color: `${c}.contrastText` },
-      '&:active':       { bgcolor: `${c}.dark`,  color: `${c}.contrastText` },
-      '&:hover:active': { bgcolor: `${c}.dark`,  color: `${c}.contrastText` },
+    "&:hover:not(.Mui-selected)": {
+      bgcolor: `${c}.main`,
+      color: `${c}.contrastText`,
     },
-    '&.Mui-focusVisible': {
+    "&:active:not(.Mui-selected)": {
+      bgcolor: `${c}.dark`,
+      color: `${c}.contrastText`,
+    },
+    "&:hover:active:not(.Mui-selected)": {
+      bgcolor: `${c}.dark`,
+      color: `${c}.contrastText`,
+    },
+    "&.Mui-selected": {
+      bgcolor: `${c}.main`,
+      color: `${c}.contrastText`,
+      borderColor: `${c}.main`,
+      "&:hover": { bgcolor: `${c}.light`, color: `${c}.contrastText` },
+      "&:active": { bgcolor: `${c}.dark`, color: `${c}.contrastText` },
+      "&:hover:active": { bgcolor: `${c}.dark`, color: `${c}.contrastText` },
+    },
+    "&.Mui-focusVisible": {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      boxShadow: (t: any) => `0 0 0 2px ${t.palette.background.paper}, 0 0 0 4px ${t.palette[c].main}`,
-      outline: 'none',
+      boxShadow: (t: any) =>
+        `0 0 0 2px ${t.palette.background.paper}, 0 0 0 4px ${t.palette[c].main}`,
+      outline: "none",
     },
   };
 }
