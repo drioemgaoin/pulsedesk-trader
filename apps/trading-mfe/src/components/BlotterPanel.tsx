@@ -7,7 +7,6 @@ import {
   FilterListIcon,
   IconButton,
   Skeleton,
-  Stack,
   Tab,
   Table,
   TableBody,
@@ -18,7 +17,6 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Tooltip,
-  Typography,
   KeyboardArrowDownIcon,
   StatusChip,
   tableRowSx,
@@ -457,17 +455,7 @@ export function BlotterPanel({
                 {orders.map((order, index) => (
                   <TableRow
                     key={order.id}
-                    sx={{
-                      ...tableRowSx(index),
-                      ...(order.status === 'REJECTED' && {
-                        opacity: 0.55,
-                        '&:hover': { bgcolor: 'rgba(255,255,255,0.05)', opacity: 1 },
-                      }),
-                      ...(order.status === 'CANCELLED' && {
-                        opacity: 0.45,
-                        '&:hover': { bgcolor: 'rgba(255,255,255,0.03)', opacity: 0.7 },
-                      }),
-                    }}
+                    sx={tableRowSx(index)}
                   >
                     <TableCell
                       sx={{
@@ -529,13 +517,6 @@ export function BlotterPanel({
               </TableBody>
             </Table>
 
-            {orders.length > 0 && total > orders.length && statusFilter !== 'ALL' && (
-              <Stack direction="row" justifyContent="center" sx={{ p: 1 }}>
-                <Typography variant="caption" color="text.secondary">
-                  Showing {orders.length} of {total} — click <Box component="span" sx={{ fontWeight: 600, color: 'text.primary' }}>All</Box> to see all orders
-                </Typography>
-              </Stack>
-            )}
           </>
         )}
       </Box>
