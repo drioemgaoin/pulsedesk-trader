@@ -1,3 +1,5 @@
+import { pd } from './semantics';
+
 /**
  * @pulsedesk/ui — Shared style constants
  * ════════════════════════════════════════════════════════════════════
@@ -59,7 +61,7 @@ export const statusChipSx = {
  */
 export const partiallyFilledChipSx = {
   '&.MuiChip-filled': {
-    backgroundColor: '#0891B2',  // Tailwind cyan-600  — distinct from info blue
+    backgroundColor: pd.statusPartial,
     color: '#ffffff',
   },
 };
@@ -73,7 +75,7 @@ export const partiallyFilledChipSx = {
  */
 export const cancelledChipSx = {
   '&.MuiChip-filled': {
-    backgroundColor: '#475569',  // Tailwind slate-600 — visible neutral grey
+    backgroundColor: pd.statusCancelled,
     color: 'rgba(255,255,255,0.85)',
   },
 };
@@ -193,10 +195,10 @@ export const SIZES = {
 // ─────────────────────────────────────────────────────────────────────────────
 
 /** Alternating background applied to odd-indexed data rows (index % 2 === 1). */
-export const TABLE_ZEBRA_BG  = 'rgba(255,255,255,0.022)';
+export const TABLE_ZEBRA_BG = pd.tableZebra;
 
 /** Background applied on row hover. */
-export const TABLE_HOVER_BG  = 'rgba(255,255,255,0.05)';
+export const TABLE_HOVER_BG = pd.tableHover;
 
 /**
  * Base MUI sx for a data table row.

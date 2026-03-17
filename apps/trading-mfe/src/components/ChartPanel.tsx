@@ -9,10 +9,10 @@ import {
 } from "lightweight-charts";
 import {
   Box,
-  Chip,
   Typography,
   useTheme,
-  FiberManualRecordIcon,
+  LiveBadge,
+  PulsingChip,
 } from "@pulsedesk/ui";
 import type { MarketTick, WsStatus } from "../hooks/useMarketStream";
 
@@ -275,40 +275,8 @@ export function ChartPanel({ symbol, tick, streamStatus }: ChartPanelProps) {
         )}
         {/* LIVE badge — only when connected and receiving data */}
         {streamStatus === "connected" && lastPrice !== null && (
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 0.5,
-              bgcolor: "var(--pd-bg-canvas)",
-              px: 1,
-              py: 0.5,
-              borderRadius: 0.5,
-              opacity: 0.92,
-            }}
-          >
-            <FiberManualRecordIcon
-              sx={{
-                fontSize: 7,
-                color: "success.main",
-                animation: "livePulse 2s ease-in-out infinite",
-                "@keyframes livePulse": {
-                  "0%, 100%": { opacity: 1 },
-                  "50%": { opacity: 0.4 },
-                },
-              }}
-            />
-            <Typography
-              sx={{
-                fontSize: "0.625rem",
-                fontWeight: 700,
-                letterSpacing: "0.08em",
-                color: "success.main",
-                lineHeight: 1,
-              }}
-            >
-              LIVE
-            </Typography>
+          <Box sx={{ bgcolor: "var(--pd-bg-canvas)", px: 1, py: 0.5, borderRadius: 0.5, opacity: 0.92 }}>
+            <LiveBadge />
           </Box>
         )}
       </Box>
@@ -335,22 +303,7 @@ export function ChartPanel({ symbol, tick, streamStatus }: ChartPanelProps) {
       {/* STALE badge — top-right */}
       {isStale && (
         <Box sx={{ position: "absolute", top: 8, right: 10, zIndex: 2 }}>
-          <Chip
-            label="STALE"
-            size="small"
-            color="warning"
-            sx={{
-              fontSize: "0.625rem",
-              height: 18,
-              fontWeight: 700,
-              letterSpacing: "0.06em",
-              animation: "pulse 1.5s ease-in-out infinite",
-              "@keyframes pulse": {
-                "0%, 100%": { opacity: 1 },
-                "50%": { opacity: 0.45 },
-              },
-            }}
-          />
+          <PulsingChip label="STALE" color="warning" />
         </Box>
       )}
 

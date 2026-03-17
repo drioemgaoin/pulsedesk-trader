@@ -3,19 +3,10 @@ import { useDispatch, useSelector } from "react-redux";
 import { useQueryClient } from "@tanstack/react-query";
 import {
   Box,
-  Chip,
-  Divider,
   Drawer,
-  IconButton,
-  Paper,
-  Skeleton,
   Snackbar,
-  Tooltip,
-  Typography,
   useMediaQuery,
   useTheme,
-  TrendingUpIcon,
-  MenuIcon,
 } from "@pulsedesk/ui";
 import { WatchlistPanel } from "./components/WatchlistPanel";
 import type { WatchlistPanelHandle } from "./components/WatchlistPanel";
@@ -23,10 +14,12 @@ import { ChartPanel } from "./components/ChartPanel";
 import { OrderTicketPanel } from "./components/OrderTicketPanel";
 import type { OrderTicketPanelHandle } from "./components/OrderTicketPanel";
 import { BlotterPanel } from "./components/BlotterPanel";
+import { TickerStrip } from "./components/TickerStrip";
+import { FillToast } from "./components/FillToast";
 import { useMarketStream } from "./hooks/useMarketStream";
 import { useWatchlistQuery } from "./hooks/useWatchlistQuery";
 import { setConnectionStatus } from "./store/terminalActions";
-import type { FillEvent, MarketTick, WsStatus } from "./hooks/useMarketStream";
+import type { FillEvent, MarketTick } from "./hooks/useMarketStream";
 import type { ShellState } from "./types/store";
 
 const STREAM_URL =
@@ -34,13 +27,6 @@ const STREAM_URL =
   "ws://localhost:3016/stream";
 
 const BOTTOM_PANEL_HEIGHT = 240;
-
-/** Compact volume: 5 000 000 → 5.0M, 125 000 → 125K */
-function fmtVol(v: number): string {
-  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
-  if (v >= 1_000) return `${Math.round(v / 1_000)}K`;
-  return v.toString();
-}
 
 function useThrottledValue<T>(value: T, limitMs: number): T {
   const [throttled, setThrottled] = useState<T>(value);
@@ -78,301 +64,6 @@ function useThrottledValue<T>(value: T, limitMs: number): T {
   }, [value, limitMs]);
 
   return throttled;
-}
-
-// ── Ticker strip ─────────────────────────────────────────────────────────────
-interface TickerStripProps {
-  tick: MarketTick | null;
-  status: WsStatus;
-  showWatchlistToggle: boolean;
-  onToggleWatchlist: () => void;
-}
-
-function TickerStrip({
-  tick,
-  status,
-  showWatchlistToggle,
-  onToggleWatchlist,
-}: TickerStripProps) {
-  const prevLastRef = useRef<number | null>(null);
-  const [dir, setDir] = useState<"up" | "down" | null>(null);
-
-  useEffect(() => {
-    if (!tick) return;
-    if (prevLastRef.current !== null && tick.last !== prevLastRef.current) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setDir(tick.last > prevLastRef.current ? "up" : "down");
-    }
-    prevLastRef.current = tick.last;
-  }, [tick]);
-
-  const spread = tick ? (tick.ask - tick.bid).toFixed(2) : null;
-  const isStale = status === "reconnecting";
-  const isConnecting = status === "connecting";
-
-  const priceColorSx =
-    dir === "up"
-      ? "trading.uptick"
-      : dir === "down"
-        ? "trading.downtick"
-        : "text.primary";
-
-  return (
-    <Box
-      sx={{
-        px: 2,
-        borderBottom: 1,
-        borderColor: "divider",
-        /* Distinct background anchors the strip inside the workspace,
-           not the navigation chrome above it */
-        bgcolor: "var(--pd-bg-canvas)",
-        display: "flex",
-        alignItems: "center",
-        gap: 0,
-        flexShrink: 0,
-        minHeight: 52,
-        py: 0,
-      }}
-    >
-      {/* Watchlist toggle on small screens */}
-      {showWatchlistToggle && (
-        <Tooltip title="Toggle watchlist">
-          <IconButton
-            size="small"
-            onClick={onToggleWatchlist}
-            aria-label="toggle watchlist"
-            sx={{ mr: 1 }}
-          >
-            <MenuIcon fontSize="small" />
-          </IconButton>
-        </Tooltip>
-      )}
-
-      {tick ? (
-        <>
-          {/* Symbol + last price — left-accented "selected instrument" block */}
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "baseline",
-              gap: 2,
-              flexShrink: 0,
-              pr: 3,
-              pl: 1.5,
-              py: 1.5,
-              ml: -0.5,
-              borderLeft: "3px solid",
-              borderLeftColor: "var(--pd-accent-primary)",
-            }}
-          >
-            <Typography
-              sx={{
-                fontSize: "1rem",
-                fontWeight: 800,
-                letterSpacing: "0.01em",
-                color: "text.primary",
-                lineHeight: 1,
-              }}
-            >
-              {tick.symbol}
-            </Typography>
-            <Typography
-              component="span"
-              fontWeight={700}
-              role="status"
-              aria-live="polite"
-              aria-atomic="true"
-              aria-label={`${tick.symbol} last price ${tick.last.toFixed(2)}`}
-              sx={{
-                fontVariantNumeric: "tabular-nums",
-                color: priceColorSx,
-                transition: "color 0.6s",
-                lineHeight: 1,
-                fontSize: "1.375rem",
-                letterSpacing: "-0.01em",
-              }}
-            >
-              {tick.last.toFixed(2)}
-            </Typography>
-          </Box>
-
-          <Divider orientation="vertical" flexItem sx={{ mx: 2.5, my: 1 }} />
-
-          {/* Bid / Ask — secondary group */}
-          <Box
-            sx={{
-              display: "flex",
-              alignItems: "center",
-              gap: 3,
-              flexShrink: 0,
-            }}
-          >
-            <Tooltip
-              title="Highest price a buyer is currently willing to pay"
-              placement="bottom"
-            >
-              <Box sx={{ cursor: "default" }}>
-                <Typography
-                  display="block"
-                  lineHeight={1}
-                  sx={{
-                    fontSize: "0.625rem",
-                    letterSpacing: "0.06em",
-                    textTransform: "uppercase",
-                    color: "text.disabled",
-                    mb: 0.5,
-                  }}
-                >
-                  Bid
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontVariantNumeric: "tabular-nums",
-                    fontWeight: 600,
-                    lineHeight: 1,
-                  }}
-                >
-                  {tick.bid.toFixed(2)}
-                </Typography>
-              </Box>
-            </Tooltip>
-            <Tooltip
-              title="Lowest price a seller is currently willing to accept"
-              placement="bottom"
-            >
-              <Box sx={{ cursor: "default" }}>
-                <Typography
-                  display="block"
-                  lineHeight={1}
-                  sx={{
-                    fontSize: "0.625rem",
-                    letterSpacing: "0.06em",
-                    textTransform: "uppercase",
-                    color: "text.disabled",
-                    mb: 0.5,
-                  }}
-                >
-                  Ask
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontVariantNumeric: "tabular-nums",
-                    fontWeight: 600,
-                    lineHeight: 1,
-                  }}
-                >
-                  {tick.ask.toFixed(2)}
-                </Typography>
-              </Box>
-            </Tooltip>
-          </Box>
-
-          {/* Spread + Volume — tertiary group, hidden on narrow */}
-          <Box
-            sx={{
-              display: { xs: "none", md: "flex" },
-              alignItems: "center",
-              gap: 3,
-              flexShrink: 0,
-              ml: 3,
-            }}
-          >
-            <Divider orientation="vertical" flexItem />
-            <Tooltip
-              title="Cost to trade — difference between ask and bid prices. Lower is better."
-              placement="bottom"
-            >
-              <Box sx={{ cursor: "default" }}>
-                <Typography
-                  display="block"
-                  lineHeight={1}
-                  sx={{
-                    fontSize: "0.625rem",
-                    letterSpacing: "0.06em",
-                    textTransform: "uppercase",
-                    color: "text.disabled",
-                    mb: 0.5,
-                  }}
-                >
-                  Spread
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontVariantNumeric: "tabular-nums",
-                    color: "text.secondary",
-                    lineHeight: 1,
-                  }}
-                >
-                  {spread}
-                </Typography>
-              </Box>
-            </Tooltip>
-            <Tooltip
-              title="Total number of shares traded today"
-              placement="bottom"
-            >
-              <Box sx={{ cursor: "default" }}>
-                <Typography
-                  display="block"
-                  lineHeight={1}
-                  sx={{
-                    fontSize: "0.625rem",
-                    letterSpacing: "0.06em",
-                    textTransform: "uppercase",
-                    color: "text.disabled",
-                    mb: 0.5,
-                  }}
-                >
-                  Volume
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontVariantNumeric: "tabular-nums",
-                    color: "text.secondary",
-                    lineHeight: 1,
-                  }}
-                >
-                  {fmtVol(tick.volume)}
-                </Typography>
-              </Box>
-            </Tooltip>
-          </Box>
-        </>
-      ) : isConnecting ? (
-        <Skeleton width={280} height={28} />
-      ) : (
-        <Typography variant="body2" color="text.disabled">
-          Select a symbol from the watchlist
-        </Typography>
-      )}
-
-      <Box sx={{ flex: 1 }} />
-
-      {/* Stale / reconnecting indicator */}
-      {isStale && (
-        <Chip
-          label="RECONNECTING"
-          size="small"
-          color="warning"
-          sx={{
-            fontSize: "0.625rem",
-            height: 18,
-            fontWeight: 700,
-            letterSpacing: "0.04em",
-            animation: "pulse 1.5s ease-in-out infinite",
-            "@keyframes pulse": {
-              "0%, 100%": { opacity: 1 },
-              "50%": { opacity: 0.4 },
-            },
-          }}
-        />
-      )}
-    </Box>
-  );
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
@@ -496,40 +187,7 @@ export default function TradingTerminalPage() {
         onClose={handleSnackbarClose}
         anchorOrigin={{ vertical: "bottom", horizontal: "right" }}
       >
-        <Paper
-          elevation={4}
-          sx={{
-            px: 2.5,
-            py: 1.5,
-            borderLeft: `3px solid ${theme.palette.success.main}`,
-            minWidth: 260,
-            display: "flex",
-            alignItems: "center",
-            gap: 1.5,
-          }}
-        >
-          <TrendingUpIcon
-            sx={{ fontSize: 18, color: "success.main", flexShrink: 0 }}
-          />
-          <Box>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              sx={{
-                display: "block",
-                textTransform: "uppercase",
-                letterSpacing: "0.06em",
-              }}
-            >
-              Order Filled
-            </Typography>
-            <Typography variant="body2" fontWeight={600}>
-              {currentFill
-                ? `${currentFill.symbol} × ${currentFill.filledQuantity} ${currentFill.side} FILLED at $${currentFill.fillPrice}`
-                : ""}
-            </Typography>
-          </Box>
-        </Paper>
+        {currentFill ? <FillToast fill={currentFill} /> : <span />}
       </Snackbar>
 
       {/* ── Ticker strip ── */}

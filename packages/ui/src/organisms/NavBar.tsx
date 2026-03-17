@@ -1,6 +1,7 @@
 import React from 'react';
 import { AppBar, Box, IconButton, Toolbar, Tooltip, Typography } from '../atoms';
 import { DarkModeIcon, LightModeIcon, LogoutIcon } from '../icons';
+import { BrandWordmark } from '../molecules';
 
 export interface NavBarLink {
   /** Route label shown in the nav */
@@ -37,49 +38,8 @@ export function NavBar({ navLinks, username, themeMode, onToggleTheme, onLogout 
     <AppBar position="static" component="header">
       <Toolbar variant="dense" sx={{ gap: 0, minHeight: 48 }}>
         {/* ── Wordmark ── */}
-        <Box
-          sx={{
-            display: 'flex',
-            alignItems: 'baseline',
-            gap: 0.5,
-            mr: 3,
-            flexShrink: 0,
-          }}
-        >
-          <Typography
-            component="span"
-            sx={{
-              fontSize: '0.9375rem',
-              fontWeight: 400,
-              letterSpacing: '-0.01em',
-              color: 'text.primary',
-            }}
-          >
-            Pulse
-          </Typography>
-          <Typography
-            component="span"
-            sx={{
-              fontSize: '0.9375rem',
-              fontWeight: 700,
-              letterSpacing: '-0.01em',
-              color: 'primary.main',
-            }}
-          >
-            Desk
-          </Typography>
-          <Typography
-            component="span"
-            sx={{
-              fontSize: '0.625rem',
-              fontWeight: 600,
-              letterSpacing: '0.12em',
-              color: 'text.secondary',
-              ml: 0.5,
-            }}
-          >
-            TRADER
-          </Typography>
+        <Box sx={{ mr: 3, flexShrink: 0 }}>
+          <BrandWordmark size="sm" />
         </Box>
 
         {/* ── Nav links ── */}

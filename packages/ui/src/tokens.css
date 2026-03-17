@@ -46,6 +46,8 @@
   --pd-p-pending-500: #E0963A;
   --pd-p-pending-600: #C07020;
   --pd-p-pending-700: #9A5818;
+  --pd-p-cyan-600: #0891B2;
+  --pd-p-slate-600: #475569;
   --pd-p-white: #FFFFFF;
   --pd-p-black: #000000;
 }
@@ -83,6 +85,10 @@
   --pd-status-pending-muted: rgba(224,150,58,0.08);
   --pd-status-pending-muted-strong: rgba(224,150,58,0.16);
   --pd-status-neutral: var(--pd-p-navy-400);
+  --pd-status-cancelled: #475569;
+  --pd-status-partial: #0891B2;
+  --pd-table-zebra: rgba(255,255,255,0.022);
+  --pd-table-hover: rgba(255,255,255,0.055);
 
   --pd-hover: rgba(255,255,255,0.04);
   --pd-selected: rgba(245,158,11,0.10);
@@ -127,6 +133,10 @@
   --pd-status-pending-muted: rgba(192,112,32,0.08);
   --pd-status-pending-muted-strong: rgba(192,112,32,0.16);
   --pd-status-neutral: var(--pd-p-navy-400);
+  --pd-status-cancelled: #475569;
+  --pd-status-partial: #0891B2;
+  --pd-table-zebra: rgba(0,0,0,0.028);
+  --pd-table-hover: rgba(0,0,0,0.055);
 
   --pd-hover: rgba(0,0,0,0.04);
   --pd-selected: rgba(180,83,9,0.09);

@@ -10,6 +10,7 @@ import {
   Divider,
   TextField,
   Typography,
+  BrandWordmark,
 } from '@pulsedesk/ui';
 import type { AppDispatch, RootState } from '../store/store';
 import { loginThunk } from '../store/authSlice';
@@ -81,25 +82,8 @@ export default function LoginPage() {
         <Box sx={{ p: 4 }}>
           {/* Wordmark */}
           <Box sx={{ mb: 3 }}>
-            <Box component="h1" aria-label="PulseDesk Trader" sx={{ display: 'flex', alignItems: 'baseline', gap: 0.5, mb: 1, m: 0 }}>
-              <Typography
-                component="span"
-                sx={{ fontSize: '1.375rem', fontWeight: 400, letterSpacing: '-0.02em', color: 'text.primary' }}
-              >
-                Pulse
-              </Typography>
-              <Typography
-                component="span"
-                sx={{ fontSize: '1.375rem', fontWeight: 700, letterSpacing: '-0.02em', color: 'primary.main' }}
-              >
-                Desk
-              </Typography>
-              <Typography
-                component="span"
-                sx={{ fontSize: '0.6875rem', fontWeight: 600, letterSpacing: '0.14em', color: 'text.secondary', ml: 0.75 }}
-              >
-                TRADER
-              </Typography>
+            <Box component="h1" aria-label="PulseDesk Trader" sx={{ m: 0, mb: 1 }}>
+              <BrandWordmark size="lg" />
             </Box>
             <Typography variant="body2" color="text.secondary">
               Professional-grade order execution platform

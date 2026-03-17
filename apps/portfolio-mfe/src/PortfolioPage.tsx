@@ -16,7 +16,6 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  TableSortLabel,
   Tooltip,
   Typography,
   useTheme,
@@ -25,15 +24,15 @@ import {
   TrendingUpIcon,
   TrendingDownIcon,
   SearchField,
-  tableRowSx,
 } from '@pulsedesk/ui';
 import { usePositionsQuery } from './hooks/usePositionsQuery';
 import { useMarketStream } from './hooks/useMarketStream';
 import { useTickHistory } from './hooks/useTickHistory';
-import { computeSummary, sortPositions, pctReturn } from './lib/portfolioCalc';
+import { computeSummary, sortPositions } from './lib/portfolioCalc';
 import { downloadCsv } from './lib/csvExport';
-import { Sparkline } from './components/Sparkline';
 import { PnlChart } from './components/PnlChart';
+import { SortableHeader } from './components/SortableHeader';
+import { PortfolioPositionRow } from './components/PortfolioPositionRow';
 import type { SortKey, SortState } from './lib/portfolioCalc';
 import type { PnlPoint } from './components/PnlChart';
 import type { ShellState } from './types/store';
@@ -49,46 +48,6 @@ function fmt(n: number, decimals = 2): string {
   });
 }
 
-// ── SortableHeader — declared at module scope to prevent recreation on every render ──
-interface SortableHeaderProps {
-  label: string;
-  sortKey: SortKey;
-  align?: 'left' | 'right';
-  tooltip?: string;
-  sx?: object;
-  sort: SortState;
-  onSort: (key: SortKey) => void;
-}
-
-function SortableHeader({ label, sortKey, align = 'right', tooltip, sx: extraSx, sort, onSort }: SortableHeaderProps) {
-  return (
-    <TableCell
-      align={align}
-      sortDirection={sort.key === sortKey ? sort.direction : false}
-      sx={{
-        fontSize: '0.625rem',
-        fontWeight: 700,
-        letterSpacing: '0.07em',
-        textTransform: 'uppercase',
-        color: 'text.disabled',
-        py: 1,
-        ...extraSx,
-      }}
-    >
-      <TableSortLabel
-        active={sort.key === sortKey}
-        direction={sort.key === sortKey ? sort.direction : 'asc'}
-        onClick={() => onSort(sortKey)}
-      >
-        {tooltip ? (
-          <Tooltip title={tooltip} placement="top">
-            <span aria-label={label}>{label}</span>
-          </Tooltip>
-        ) : label}
-      </TableSortLabel>
-    </TableCell>
-  );
-}
 
 function fmtPnl(n: number): string {
   return `${n >= 0 ? '+' : ''}${fmt(n)}`;
@@ -393,49 +352,15 @@ export default function PortfolioPage() {
                       ))}
                     </TableRow>
                   ))
-                : filteredSorted.map((p, index) => {
-                    const ret = pctReturn(p);
-                    const history = tickHistory.get(p.symbol) ?? [];
-
-                    const marketValue = p.quantity * p.marketPrice;
-                    return (
-                      <TableRow
-                        key={p.symbol}
-                        sx={tableRowSx(index)}
-                      >
-                        <TableCell sx={{ fontWeight: 700 }}>{p.symbol}</TableCell>
-                        <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums', display: { xs: 'none', sm: 'table-cell' } }}>{p.quantity}</TableCell>
-                        <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums', color: 'text.secondary', display: { xs: 'none', md: 'table-cell' } }}>{fmt(p.averageCost)}</TableCell>
-                        <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums', display: { xs: 'none', md: 'table-cell' } }}>{fmt(p.marketPrice)}</TableCell>
-                        <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums', color: 'text.secondary', display: { xs: 'none', lg: 'table-cell' } }}>
-                          ${fmt(marketValue)}
-                        </TableCell>
-                        <TableCell
-                          align="right"
-                          sx={{ color: pnlColour(p.unrealizedPnl), fontVariantNumeric: 'tabular-nums', fontWeight: 700 }}
-                          aria-label={`${p.symbol} unrealized PnL`}
-                        >
-                          {fmtPnl(p.unrealizedPnl)}
-                        </TableCell>
-                        <TableCell
-                          align="right"
-                          sx={{ color: pnlColour(ret), fontVariantNumeric: 'tabular-nums', fontWeight: 600 }}
-                          aria-label={`${p.symbol} return`}
-                        >
-                          {ret >= 0 ? '+' : ''}{fmt(ret)}%
-                        </TableCell>
-                        <TableCell align="center" sx={{ width: 136, px: 0.5, display: { xs: 'none', sm: 'table-cell' } }}>
-                          <div style={{ width: 120, height: 36, display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}>
-                            {history.length >= 2 ? (
-                              <Sparkline data={history} width={120} height={36} />
-                            ) : (
-                              <Typography variant="caption" color="text.disabled">—</Typography>
-                            )}
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                : filteredSorted.map((p, index) => (
+                    <PortfolioPositionRow
+                      key={p.symbol}
+                      position={p}
+                      index={index}
+                      pnlColour={pnlColour}
+                      tickHistory={tickHistory.get(p.symbol) ?? []}
+                    />
+                  ))}
             </TableBody>
           </Table>
         </TableContainer>

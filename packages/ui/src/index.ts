@@ -17,6 +17,7 @@
 export * from './atoms';
 export * from './molecules';
 export * from './organisms';
+export * from './semantics';
 export * from './icons';
 export * from './tokens';
 export * from './theme';

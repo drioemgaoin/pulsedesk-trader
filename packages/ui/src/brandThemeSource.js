@@ -55,6 +55,8 @@ export const BRAND_THEME = {
     "pending-500": "#E0963A",
     "pending-600": "#C07020",
     "pending-700": "#9A5818",
+    "cyan-600": "#0891B2",
+    "slate-600": "#475569",
 
     white: "#FFFFFF",
     black: "#000000",
@@ -106,6 +108,10 @@ export const BRAND_THEME = {
       statusPendingMuted: "rgba(224,150,58,0.08)",
       statusPendingMutedStrong: "rgba(224,150,58,0.16)",
       statusNeutral: "#4A6080",
+      statusCancelled: '#475569',
+      statusPartial:   '#0891B2',
+      tableZebraBg:    'rgba(255,255,255,0.022)',
+      tableHoverBg:    'rgba(255,255,255,0.055)',
 
       actionHover: "rgba(255,255,255,0.04)",
       actionSelected: "rgba(245,158,11,0.10)",
@@ -171,6 +177,10 @@ export const BRAND_THEME = {
       statusPendingMuted: "rgba(192,112,32,0.08)",
       statusPendingMutedStrong: "rgba(192,112,32,0.16)",
       statusNeutral: "#4A6080",
+      statusCancelled: '#475569',
+      statusPartial:   '#0891B2',
+      tableZebraBg:    'rgba(0,0,0,0.028)',
+      tableHoverBg:    'rgba(0,0,0,0.055)',
 
       actionHover: "rgba(0,0,0,0.04)",
       actionSelected: "rgba(180,83,9,0.09)",

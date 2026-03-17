@@ -67,3 +67,8 @@ export type {
 } from '@mui/material';
 
 export { createTheme } from '@mui/material/styles';
+
+export { LiveBadge } from './LiveBadge';
+export type { LiveBadgeProps } from './LiveBadge';
+export { PulsingChip } from './PulsingChip';
+export type { PulsingChipProps } from './PulsingChip';
