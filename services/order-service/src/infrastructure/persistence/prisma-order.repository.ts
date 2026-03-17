@@ -62,10 +62,13 @@ export class PrismaOrderRepository implements IOrderRepository {
 
   async findAllByAccount(
     accountId: string,
-    query: { status?: string; limit?: number; offset?: number } = {},
+    query: { statuses?: string[]; limit?: number; offset?: number } = {},
   ): Promise<{ orders: Order[]; total: number }> {
-    const { status, limit = 50, offset = 0 } = query;
-    const whereBase = status ? { accountId, status } : { accountId };
+    const { statuses, limit = 50, offset = 0 } = query;
+    const whereBase = {
+      accountId,
+      ...(statuses && statuses.length > 0 && { status: { in: statuses } }),
+    };
     const records = (await this.prisma.order.findMany({
       where: whereBase,
       orderBy: { createdAt: 'desc' },

@@ -21,6 +21,7 @@ import {
   Typography,
   KeyboardArrowDownIcon,
   StatusChip,
+  tableRowSx,
 } from "@pulsedesk/ui";
 import { useOrdersQuery } from "../hooks/useOrdersQuery";
 import { PositionsPanel } from "./PositionsPanel";
@@ -453,14 +454,18 @@ export function BlotterPanel({
                   </TableRow>
                 )}
 
-                {orders.map((order) => (
+                {orders.map((order, index) => (
                   <TableRow
                     key={order.id}
-                    hover
                     sx={{
-                      ...(order.status === "PENDING" && {
-                        borderLeft: "2px solid",
-                        borderLeftColor: "warning.main",
+                      ...tableRowSx(index),
+                      ...(order.status === 'REJECTED' && {
+                        opacity: 0.55,
+                        '&:hover': { bgcolor: 'rgba(255,255,255,0.05)', opacity: 1 },
+                      }),
+                      ...(order.status === 'CANCELLED' && {
+                        opacity: 0.45,
+                        '&:hover': { bgcolor: 'rgba(255,255,255,0.03)', opacity: 0.7 },
                       }),
                     }}
                   >

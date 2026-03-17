@@ -18,6 +18,7 @@ import {
   Tooltip,
   Typography,
   SearchField,
+  tableZebraTableSx,
 } from '@pulsedesk/ui';
 import type {
   MarketTick,
@@ -180,6 +181,7 @@ export const WatchlistPanel = forwardRef<
                 py: 0,
                 verticalAlign: 'middle',
               },
+              ...tableZebraTableSx,
             }}
           >
             <TableHead>

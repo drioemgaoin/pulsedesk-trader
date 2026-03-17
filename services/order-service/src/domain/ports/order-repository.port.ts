@@ -8,7 +8,7 @@ export interface OrdersPage {
 }
 
 export interface FindOrdersQuery {
-  status?: string;
+  statuses?: string[];
   limit?: number;
   offset?: number;
 }

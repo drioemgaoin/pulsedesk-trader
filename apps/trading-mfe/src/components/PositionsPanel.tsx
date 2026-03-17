@@ -9,6 +9,7 @@ import {
   TableHead,
   TableRow,
   Tooltip,
+  tableRowSx,
 } from '@pulsedesk/ui';
 import { usePositionsQuery } from '../hooks/usePositionsQuery';
 
@@ -107,12 +108,12 @@ export function PositionsPanel({ accountId }: PositionsPanelProps) {
               </TableRow>
             )}
             {positions !== null &&
-              positions.map((pos) => {
+              positions.map((pos, index) => {
                 const ret = pctReturn(pos.unrealizedPnl, pos.quantity, pos.averageCost);
                 const pnlColor = pos.unrealizedPnl > 0 ? 'trading.uptick' : pos.unrealizedPnl < 0 ? 'trading.downtick' : 'text.secondary';
                 const retColor = ret !== null ? (ret > 0 ? 'trading.uptick' : ret < 0 ? 'trading.downtick' : 'text.secondary') : 'text.secondary';
                 return (
-                  <TableRow key={pos.symbol} hover>
+                  <TableRow key={pos.symbol} sx={tableRowSx(index)}>
                     <TableCell sx={{ fontWeight: 600 }}>{pos.symbol}</TableCell>
                     <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums', display: { xs: 'none', sm: 'table-cell' } }}>{pos.quantity}</TableCell>
                     <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums', color: 'text.secondary', display: { xs: 'none', md: 'table-cell' } }}>{fmt2(pos.averageCost)}</TableCell>

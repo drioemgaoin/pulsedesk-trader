@@ -20,8 +20,10 @@ function getFilteredOrders(urlString: string) {
   const url = new URL(urlString);
   const params = url.searchParams;
 
-  const status = params.get('status');
-  const symbol = params.get('symbol');
+  const statusParam = params.get('status');
+  const symbolParam = params.get('symbol');
+  const statuses = statusParam ? statusParam.split(',') : [];
+  const symbols  = symbolParam ? symbolParam.split(',') : [];
   const side = params.get('side');
   const from = params.get('from');
   const to = params.get('to');
@@ -30,8 +32,8 @@ function getFilteredOrders(urlString: string) {
 
   let orders = [...MOCK_ORDERS];
 
-  if (status) orders = orders.filter((o) => o.status === status);
-  if (symbol) orders = orders.filter((o) => o.symbol === symbol);
+  if (statuses.length > 0) orders = orders.filter((o) => statuses.includes(o.status));
+  if (symbols.length > 0)  orders = orders.filter((o) => symbols.includes(o.symbol));
   if (side) orders = orders.filter((o) => o.side === side);
 
   if (from) {

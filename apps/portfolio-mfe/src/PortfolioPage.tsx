@@ -25,6 +25,7 @@ import {
   TrendingUpIcon,
   TrendingDownIcon,
   SearchField,
+  tableRowSx,
 } from '@pulsedesk/ui';
 import { usePositionsQuery } from './hooks/usePositionsQuery';
 import { useMarketStream } from './hooks/useMarketStream';
@@ -392,19 +393,15 @@ export default function PortfolioPage() {
                       ))}
                     </TableRow>
                   ))
-                : filteredSorted.map((p) => {
+                : filteredSorted.map((p, index) => {
                     const ret = pctReturn(p);
                     const history = tickHistory.get(p.symbol) ?? [];
-                    const isLosing = p.unrealizedPnl < 0;
+
                     const marketValue = p.quantity * p.marketPrice;
                     return (
                       <TableRow
                         key={p.symbol}
-                        hover
-                        sx={{
-                          borderLeft: '3px solid',
-                          borderLeftColor: isLosing ? 'error.main' : 'transparent',
-                        }}
+                        sx={tableRowSx(index)}
                       >
                         <TableCell sx={{ fontWeight: 700 }}>{p.symbol}</TableCell>
                         <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums', display: { xs: 'none', sm: 'table-cell' } }}>{p.quantity}</TableCell>

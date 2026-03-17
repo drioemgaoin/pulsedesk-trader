@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -44,6 +44,7 @@ import {
   FilterChip,
   StatusChip,
   tradeSideToggleSx,
+  tableRowSx,
 } from '@pulsedesk/ui';
 import { useOrdersQuery, PAGE_SIZE } from './hooks/useOrdersQuery';
 import { useCancelOrderMutation } from './hooks/useCancelOrderMutation';
@@ -225,13 +226,25 @@ function RowDetail({ order }: { order: OrderResponseV1 }) {
   );
 }
 
+function useDebounce<T>(value: T, ms: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), ms);
+    return () => clearTimeout(id);
+  }, [value, ms]);
+  return debounced;
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 export default function OrdersPage() {
   const [page, setPage] = useState(0);
   const [filters, setFilters] = useState<OrderFilters>(DEFAULT_FILTERS);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const { data, isLoading, isError, error } = useOrdersQuery(page, filters);
+  // Debounce filters so rapid status chip clicks don't fire concurrent requests
+  const debouncedFilters = useDebounce(filters, 300);
+
+  const { data, isLoading, isError, error } = useOrdersQuery(page, debouncedFilters);
 
   const orders = data?.orders ?? [];
   const total = data?.pagination.total ?? 0;
@@ -432,10 +445,9 @@ export default function OrdersPage() {
                     </TableCell>
                   </TableRow>
                 )
-              : table.getRowModel().rows.flatMap((row) => [
+              : table.getRowModel().rows.flatMap((row, rowIndex) => [
                   <TableRow
                     key={row.id}
-                    hover
                     tabIndex={0}
                     onClick={() => row.toggleExpanded()}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); row.toggleExpanded(); } }}
@@ -444,9 +456,18 @@ export default function OrdersPage() {
                     sx={{
                       cursor: 'pointer',
                       outline: 'none',
-                      ...(row.original.status === 'PENDING' && {
+                      ...tableRowSx(rowIndex),
+                      ...((row.original.status === 'PENDING' || row.original.status === 'ACCEPTED') && {
                         borderLeft: '2px solid',
                         borderLeftColor: 'warning.main',
+                      }),
+                      ...(row.original.status === 'FILLED' && {
+                        borderLeft: '2px solid',
+                        borderLeftColor: 'success.main',
+                      }),
+                      ...(row.original.status === 'REJECTED' && {
+                        borderLeft: '2px solid',
+                        borderLeftColor: 'error.main',
                       }),
                     }}
                   >

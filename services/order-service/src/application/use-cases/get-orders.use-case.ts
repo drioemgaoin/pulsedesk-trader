@@ -7,7 +7,7 @@ import {
 
 export interface GetOrdersQuery {
   accountId: string;
-  status?: string;
+  statuses?: string[];
   limit?: number;
   offset?: number;
 }
@@ -29,7 +29,7 @@ export class GetOrdersUseCase {
     const limit = query.limit ?? 50;
     const offset = query.offset ?? 0;
     const { orders, total } = await this.repo.findAllByAccount(query.accountId, {
-      status: query.status,
+      statuses: query.statuses,
       limit,
       offset,
     });

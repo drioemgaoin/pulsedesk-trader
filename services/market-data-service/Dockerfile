@@ -16,7 +16,14 @@ COPY packages/contracts/package.json ./packages/contracts/package.json
 COPY services/market-data-service/package.json ./services/market-data-service/package.json
 
 # Stub manifests for remaining workspace members (required for pnpm workspace resolution)
+COPY packages/ui/package.json ./packages/ui/package.json
 COPY apps/trader-ui/package.json ./apps/trader-ui/package.json
+COPY apps/orders-mfe/package.json ./apps/orders-mfe/package.json
+COPY apps/portfolio-mfe/package.json ./apps/portfolio-mfe/package.json
+COPY apps/simulator-mfe/package.json ./apps/simulator-mfe/package.json
+COPY apps/trading-mfe/package.json ./apps/trading-mfe/package.json
+COPY apps/storybook/package.json ./apps/storybook/package.json
+COPY apps/e2e/package.json ./apps/e2e/package.json
 COPY services/market-data-service/package.json ./services/market-data-service/package.json
 COPY services/order-service/package.json ./services/order-service/package.json
 COPY services/risk-service/package.json ./services/risk-service/package.json

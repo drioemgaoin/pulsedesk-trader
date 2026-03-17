@@ -189,7 +189,45 @@ export const SIZES = {
 
 
 // ─────────────────────────────────────────────────────────────────────────────
-// 5. TRADE SIDE TOGGLE  (BUY / SELL ToggleButton)
+// 5. TABLE ROW STYLES — zebra striping + hover
+// ─────────────────────────────────────────────────────────────────────────────
+
+/** Alternating background applied to odd-indexed data rows (index % 2 === 1). */
+export const TABLE_ZEBRA_BG  = 'rgba(255,255,255,0.022)';
+
+/** Background applied on row hover. */
+export const TABLE_HOVER_BG  = 'rgba(255,255,255,0.05)';
+
+/**
+ * Base MUI sx for a data table row.
+ * Provides zebra striping (alternating rows) and a uniform hover state.
+ *
+ * Usage:
+ *   <TableRow sx={tableRowSx(index)} />
+ *   <TableRow sx={{ ...tableRowSx(index), ...myStatusOverrides }} />
+ */
+export const tableRowSx = (index: number) => ({
+  bgcolor: index % 2 === 1 ? TABLE_ZEBRA_BG : 'transparent',
+  '&:hover': { bgcolor: TABLE_HOVER_BG },
+});
+
+/**
+ * Table-level sx to apply zebra striping via CSS nth-of-type.
+ * Use when per-row index is unavailable (e.g. WatchlistPanel).
+ * Excludes selected rows (.Mui-selected) so their highlight is preserved.
+ *
+ * Usage:
+ *   <Table sx={{ ...myTableSx, ...tableZebraTableSx }} />
+ */
+export const tableZebraTableSx = {
+  '& .MuiTableBody-root .MuiTableRow-root:nth-of-type(odd):not(.Mui-selected)': {
+    bgcolor: TABLE_ZEBRA_BG,
+  },
+} as const;
+
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 6. TRADE SIDE TOGGLE  (BUY / SELL ToggleButton)
 // ─────────────────────────────────────────────────────────────────────────────
 
 /**
