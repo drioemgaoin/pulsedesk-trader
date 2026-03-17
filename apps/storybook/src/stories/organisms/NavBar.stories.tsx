@@ -16,10 +16,12 @@ const meta: Meta<typeof NavBar> = {
   tags: ['autodocs'],
   parameters: { layout: 'fullscreen' },
   argTypes: {
-    themeMode: { control: 'radio', options: ['dark', 'light'] },
-    username: { control: 'text' },
-    onToggleTheme: { action: 'toggleTheme' },
-    onLogout: { action: 'logout' },
+    // themeMode is injected by the global withTheme decorator — hide it from
+    // the controls panel so developers use the toolbar toggle instead.
+    themeMode: { control: false, table: { disable: true } },
+    username:       { control: 'text' },
+    onToggleTheme:  { action: 'toggleTheme' },
+    onLogout:       { action: 'logout' },
   },
 };
 export default meta;
@@ -46,24 +48,13 @@ function makeLinks(
 }
 
 // ─── Default ─────────────────────────────────────────────────────────────────
+// themeMode is omitted — the global "Theme" toolbar injects it automatically.
 
 export const Default: Story = {
-  name: 'Dark mode — Terminal active',
+  name: 'Terminal active',
   args: {
     navLinks: makeLinks('Terminal', () => {}),
     username: 'trader',
-    themeMode: 'dark',
-  },
-};
-
-// ─── Light mode ───────────────────────────────────────────────────────────────
-
-export const LightMode: Story = {
-  name: 'Light mode — Orders active',
-  args: {
-    navLinks: makeLinks('Orders', () => {}),
-    username: 'trader',
-    themeMode: 'light',
   },
 };
 
@@ -74,7 +65,6 @@ export const NoActiveLink: Story = {
   args: {
     navLinks: makeLinks(null, () => {}),
     username: 'trader',
-    themeMode: 'dark',
   },
 };
 
@@ -85,37 +75,45 @@ export const Anonymous: Story = {
   args: {
     navLinks: makeLinks('Terminal', () => {}),
     username: undefined,
-    themeMode: 'dark',
   },
 };
 
-// ─── All links active (one at a time showcase) ────────────────────────────────
+// ─── All links — active state showcase ───────────────────────────────────────
+// Each row shows one link as active so you can review the active indicator at a
+// glance. Reads themeMode from globals so the toggle icon is always correct.
 
 export const AllLinksShowcase: Story = {
   name: 'All links — active state showcase',
-  render: () => (
-    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-      {BASE_LINKS.map(({ label }) => (
-        <NavBar
-          key={label}
-          navLinks={makeLinks(label, () => {})}
-          username="trader"
-          themeMode="dark"
-          onToggleTheme={() => {}}
-          onLogout={() => {}}
-        />
-      ))}
-    </Box>
-  ),
+  render: (_args, { globals }) => {
+    const mode = globals?.['colorMode'] === 'light' ? 'light' : 'dark';
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+        {BASE_LINKS.map(({ label }) => (
+          <NavBar
+            key={label}
+            navLinks={makeLinks(label, () => {})}
+            username="trader"
+            themeMode={mode}
+            onToggleTheme={() => {}}
+            onLogout={() => {}}
+          />
+        ))}
+      </Box>
+    );
+  },
 };
 
 // ─── Interactive ─────────────────────────────────────────────────────────────
+// Clicking theme-toggle or logout fires the console action.
+// Initial mode is seeded from the toolbar; subsequent clicks update local state
+// so the icon reflects the toggle independently of the global.
 
 export const Interactive: Story = {
   name: 'Interactive — click to navigate',
-  render: () => {
+  render: (_args, { globals }) => {
+    const globalMode = globals?.['colorMode'] === 'light' ? 'light' : 'dark';
     const [active, setActive] = useState('Terminal');
-    const [mode, setMode] = useState<'dark' | 'light'>('dark');
+    const [mode, setMode] = useState<'dark' | 'light'>(globalMode);
     return (
       <NavBar
         navLinks={makeLinks(active, setActive)}
@@ -138,6 +136,5 @@ export const ExtendedLinks: Story = {
       { label: 'Simulator', icon: ScienceIcon, isActive: false, onClick: () => {} },
     ],
     username: 'trader',
-    themeMode: 'dark',
   },
 };

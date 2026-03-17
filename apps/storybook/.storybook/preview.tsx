@@ -1,5 +1,7 @@
 import React from 'react';
 import type { Preview, Decorator } from '@storybook/react';
+import { DocsContainer } from '@storybook/blocks';
+import { create as sbTheme } from '@storybook/theming/create';
 import { initialize, mswLoader } from 'msw-storybook-addon';
 import { ThemeProvider, CssBaseline, createAppTheme } from '@pulsedesk/ui';
 import { withProviders } from '../src/decorators/withProviders';
@@ -18,14 +20,85 @@ import '@fontsource/jetbrains-mono/400.css';
 // another story's handlers. With initial handlers baked in, the baseline is always active.
 initialize({ onUnhandledRequest: 'warn' }, defaultHandlers);
 
+// ── MUI themes (canvas / story rendering) ────────────────────────────────────
+
 const darkTheme  = createAppTheme('dark');
 const lightTheme = createAppTheme('light');
 const toMode = (value: unknown): 'dark' | 'light' =>
   value === 'light' ? 'light' : 'dark';
 
+// ── Storybook docs themes (Docs page prose, args tables, story headers) ───────
+// These style the DocsContainer wrapper — separate from the MUI theme used by
+// component canvases. Both must switch together when the toolbar is toggled.
+
+const brand = {
+  brandTitle: 'PulseDesk UI',
+  fontBase: '"Inter", system-ui, sans-serif',
+  fontCode: '"JetBrains Mono", monospace',
+};
+
+const sbDark = sbTheme({
+  base: 'dark',
+  ...brand,
+  colorPrimary:   '#f59e0b',
+  colorSecondary: '#f59e0b',
+  appBg:          '#1a1a1f',
+  appContentBg:   '#16161b',
+  appBorderColor: '#2a2a35',
+  barBg:          '#16161b',
+  barSelectedColor: '#f59e0b',
+  inputBg:          '#22222a',
+  inputBorder:      '#2a2a35',
+  inputTextColor:   '#e0e0e8',
+  textColor:        '#c8c8d4',
+  textMutedColor:   '#70708080',
+});
+
+const sbLight = sbTheme({
+  base: 'light',
+  ...brand,
+  colorPrimary:   '#d97706',
+  colorSecondary: '#d97706',
+  appBg:          '#f0f0f5',
+  appContentBg:   '#ffffff',
+  appBorderColor: '#dddde8',
+  barBg:          '#ffffff',
+  barSelectedColor: '#d97706',
+  inputBg:          '#ffffff',
+  inputBorder:      '#d0d0db',
+  inputTextColor:   '#1a1a2e',
+  textColor:        '#1a1a2e',
+  textMutedColor:   '#66667780',
+});
+
+// ── Themed docs container ─────────────────────────────────────────────────────
+// DocsContainer renders outside the decorator chain, so Storybook hooks like
+// useGlobals are not available here. Instead, withTheme dispatches a custom
+// window event ('pd:theme') whenever the toolbar mode changes, and a module-level
+// variable seeds the initial value so the container starts in the right mode.
+
+let previewMode: 'dark' | 'light' = 'dark';
+
+function ThemedDocsContainer(props: React.ComponentProps<typeof DocsContainer>) {
+  const [mode, setMode] = React.useState<'dark' | 'light'>(previewMode);
+  React.useEffect(() => {
+    const handler = (e: Event) => setMode((e as CustomEvent<'dark' | 'light'>).detail);
+    window.addEventListener('pd:theme', handler);
+    return () => window.removeEventListener('pd:theme', handler);
+  }, []);
+  return <DocsContainer {...props} theme={mode === 'light' ? sbLight : sbDark} />;
+}
+
+// ── Canvas theme decorator ────────────────────────────────────────────────────
+
 const withTheme: Decorator = (Story, context) => {
   const mode = toMode(context.globals?.['colorMode']);
   const theme = mode === 'light' ? lightTheme : darkTheme;
+
+  // Notify ThemedDocsContainer (which lives outside the decorator chain) so the
+  // Docs page prose, args table, and section headers switch in sync.
+  previewMode = mode;
+  window.dispatchEvent(new CustomEvent('pd:theme', { detail: mode }));
 
   // Set data-theme synchronously so CSS custom properties (--pd-bg-canvas, etc.) are
   // available on the very first render — components that use var(--pd-*) must not see
@@ -50,10 +123,17 @@ const withTheme: Decorator = (Story, context) => {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Story />
+      {/*
+       * Inject themeMode so any component that reflects the current mode
+       * (e.g. NavBar's sun/moon toggle icon) automatically matches the
+       * toolbar selection — no need to hardcode it in individual story args.
+       */}
+      <Story args={{ themeMode: mode }} />
     </ThemeProvider>
   );
 };
+
+// ── Preview config ────────────────────────────────────────────────────────────
 
 const preview: Preview = {
   globalTypes: {
@@ -77,6 +157,11 @@ const preview: Preview = {
     layout: 'fullscreen',
     backgrounds: { disable: true },
     controls: { matchers: { color: /(background|color)$/i, date: /Date$/i } },
+    docs: {
+      // ThemedDocsContainer wraps the entire Docs page and switches theme
+      // in sync with the toolbar — title, prose, args table, story headers.
+      container: ThemedDocsContainer,
+    },
     // No global msw.handlers here — defaultHandlers are baked into the worker as initial handlers
     // (see initialize() call above). Stories that need different data set parameters.msw.handlers
     // themselves, which calls worker.use() as an override on top of the initial handlers.
