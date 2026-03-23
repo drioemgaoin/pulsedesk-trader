@@ -155,7 +155,11 @@ jobs:
           VITE_RATE_LIMIT_PER_MIN: "100"
 
       - name: Build backend services
-        run: pnpm --filter "!@pulsedesk/trader-ui" --filter "!@pulsedesk/trading-mfe" --filter "!@pulsedesk/portfolio-mfe" --filter "!@pulsedesk/orders-mfe" --filter "!@pulsedesk/simulator-mfe" --filter "!@pulsedesk/contracts" build
+        # --workspace-concurrency=1 is required: multiple services use Prisma and share the
+        # same @prisma/client output path. Parallel prisma generate calls overwrite each
+        # other's generated types, causing TS2339 errors on sibling service builds.
+        # The root `build` script already enforces this for the same reason.
+        run: pnpm --filter "!@pulsedesk/trader-ui" --filter "!@pulsedesk/trading-mfe" --filter "!@pulsedesk/portfolio-mfe" --filter "!@pulsedesk/orders-mfe" --filter "!@pulsedesk/simulator-mfe" --filter "!@pulsedesk/contracts" --workspace-concurrency=1 build
 
   # ── Compose smoke ───────────────────────────────────────────────────────────
   compose-smoke:
