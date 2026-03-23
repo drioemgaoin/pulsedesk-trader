@@ -192,16 +192,11 @@ describe('Given active filters with no results', () => {
   it('When rendered, Should show clear filters button', async () => {
     renderWithProviders(<OrdersPage />);
 
-    // Open the drawer (filter panel is in Drawer on small screens in jsdom)
-    await waitFor(() => expect(screen.getByLabelText('open filters')).toBeInTheDocument());
-    fireEvent.click(screen.getByLabelText('open filters'));
-
-    // Click FILLED chip inside the drawer
+    // Wait for page to load — status chips are in the main filter bar (always visible)
     await waitFor(() => expect(screen.getByRole('button', { name: 'FILLED' })).toBeInTheDocument());
-    fireEvent.click(screen.getByRole('button', { name: 'FILLED' }));
 
-    // Close the drawer so the main content is no longer aria-hidden
-    fireEvent.keyDown(document.activeElement ?? document.body, { key: 'Escape' });
+    // Click FILLED status chip to activate a filter
+    fireEvent.click(screen.getByRole('button', { name: 'FILLED' }));
 
     // Empty result + active filter → clear filters CTA visible
     await waitFor(() =>

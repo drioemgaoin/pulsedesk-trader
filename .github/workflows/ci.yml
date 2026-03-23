@@ -83,7 +83,7 @@ jobs:
         run: pnpm --filter @pulsedesk/contracts build
 
       - name: Test all packages
-        run: pnpm test
+        run: pnpm test:unit
 
   # ── Build ───────────────────────────────────────────────────────────────────
   # Builds all workspace packages including all five MFE apps.

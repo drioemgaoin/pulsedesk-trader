@@ -57,6 +57,7 @@
     "test:e2e:ui": "pnpm --filter @pulsedesk/e2e test --ui",
     "test:e2e:report": "pnpm --filter @pulsedesk/e2e show-report",
     "test:all": "pnpm test:unit && pnpm test:integration && pnpm test:e2e",
+    "ci": "pnpm lint && pnpm audit --audit-level=high && pnpm test:unit",
     "preview": "pnpm --filter @pulsedesk/trader-ui preview"
   },
   "devDependencies": {

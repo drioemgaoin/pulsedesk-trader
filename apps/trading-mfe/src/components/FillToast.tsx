@@ -1,3 +1,4 @@
+import { forwardRef } from "react";
 import { Box, Paper, Typography, TrendingUpIcon, useTheme } from "@pulsedesk/ui";
 
 export interface FillEvent {
@@ -14,11 +15,16 @@ export interface FillToastProps {
 /**
  * Snackbar content for a filled order notification.
  * Rendered inside a <Snackbar> in TradingTerminalPage.
+ * Must use forwardRef so MUI Grow (Snackbar's default transition) can attach
+ * its nodeRef — without it, reflow(nodeRef.current) throws in jsdom and
+ * transitions produce a null-ref error in production.
  */
-export function FillToast({ fill }: FillToastProps) {
+export const FillToast = forwardRef<HTMLDivElement, FillToastProps>(
+  function FillToast({ fill }, ref) {
   const theme = useTheme();
   return (
     <Paper
+      ref={ref}
       elevation={4}
       sx={{
         px: 2.5,
@@ -45,4 +51,4 @@ export function FillToast({ fill }: FillToastProps) {
       </Box>
     </Paper>
   );
-}
+});

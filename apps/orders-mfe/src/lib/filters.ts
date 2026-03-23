@@ -37,7 +37,7 @@ export function buildQueryString(
   if (accountId) params.set('accountId', accountId);
   params.set('limit', String(pageSize));
   params.set('offset', String(page * pageSize));
-  if (filters.statuses.length > 0) params.set('status', filters.statuses.join(','));
+  if (filters.statuses.length === 1) params.set('status', filters.statuses[0]);
   if (filters.symbols.length > 0)  params.set('symbol',  filters.symbols.join(','));
   if (filters.side !== 'ALL') params.set('side', filters.side);
   if (filters.dateFrom) params.set('from', filters.dateFrom);

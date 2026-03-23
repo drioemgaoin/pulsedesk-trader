@@ -20,6 +20,9 @@ vi.mock('./components/BlotterPanel', () => ({
 vi.mock('./components/PositionsPanel', () => ({
   PositionsPanel: () => <div data-testid="positions" />,
 }));
+vi.mock('./components/TickerStrip', () => ({
+  TickerStrip: () => <div data-testid="ticker-strip" />,
+}));
 
 // ── Mock useWatchlistQuery ───────────────────────────────────────────────────
 vi.mock('./hooks/useWatchlistQuery', () => ({
