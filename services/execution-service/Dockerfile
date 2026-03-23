@@ -2,7 +2,7 @@
 FROM node:20-alpine AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable
+RUN npm install -g pnpm@10.17.1
 
 # ── Dependency install (cached until lockfile or any package.json changes) ──
 FROM base AS deps
