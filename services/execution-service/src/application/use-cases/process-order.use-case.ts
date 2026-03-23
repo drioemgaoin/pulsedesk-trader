@@ -95,9 +95,6 @@ export class ProcessOrderUseCase {
   }
 
   private deriveFillPrice(event: OrderSubmittedEvent): number {
-    if (event.type === OrderType.LIMIT) {
-      return event.limitPrice!;
-    }
     const price = this.priceCache.getPrice(event.symbol);
     if (price === null) {
       throw new NoMarketPriceError(event.symbol);

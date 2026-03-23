@@ -5,6 +5,7 @@ import '@fontsource/inter/700.css';
 import '@fontsource/jetbrains-mono/400.css';
 import '@pulsedesk/ui/tokens.css';
 
+import { Transition } from 'react-transition-group';
 import { StrictMode, useMemo } from 'react';
 import { createRoot } from 'react-dom/client';
 import { BrowserRouter, Navigate, Route, Routes } from 'react-router-dom';
@@ -17,6 +18,31 @@ import { store } from './store/store';
 import type { RootState } from './store/store';
 import { setAuthToken } from './api/client';
 import { createAppTheme } from './theme/theme';
+
+// ── React 19 + react-transition-group v4 compatibility patch ─────────────────
+// MUI Grow's onEnter calls reflow(nodeRef.current) inside componentDidMount.
+// In some render paths (Portal-rendered content, concurrent mode scheduling)
+// nodeRef.current can be null at that point, crashing with:
+//   TypeError: Cannot read properties of null (reading 'scrollTop')
+//
+// Guard: if nodeRef is provided and .current is null when componentDidMount
+// fires, clear appearStatus so updateStatus(true, null) becomes a no-op.
+// On normal mounts the ref is always set before componentDidMount, so this
+// guard only fires when the timing race occurs.
+{
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const proto = Transition.prototype as any;
+  const original: () => void = proto.componentDidMount;
+  proto.componentDidMount = function (this: {
+    props: { nodeRef?: { current: unknown } | null };
+    appearStatus: unknown;
+  }) {
+    if (this.props.nodeRef != null && this.props.nodeRef.current == null) {
+      this.appearStatus = null;
+    }
+    original.call(this);
+  };
+}
 
 // If a valid token was restored from localStorage, prime the API client's
 // Authorization header before the first React render / query fires.

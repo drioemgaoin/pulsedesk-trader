@@ -1266,11 +1266,24 @@ export function createAppTheme(mode: PaletteMode) {
       MuiSnackbar: {
         defaultProps: {
           anchorOrigin: { vertical: "bottom", horizontal: "right" },
+          // React 19 + react-transition-group v4: Snackbar unmounts entirely when
+          // closed (!open && exited → null) and remounts fresh when open=true. The
+          // fresh Grow (appear=true, in=true) calls onEnter(nodeRef.current) inside
+          // componentDidMount, but nodeRef.current is null at that point. appear=false
+          // skips the mount-time enter animation; the Snackbar appears instantly.
+          slotProps: { transition: { appear: false } },
         },
       },
 
       /* ── Overlay: Dialog ── */
       MuiDialog: {
+        defaultProps: {
+          // React 19 + react-transition-group v4: Dialog uses Fade with appear=true
+          // hardcoded. When a Dialog opens fresh, componentDidMount fires with
+          // nodeRef.current=null → reflow(null) crashes. appear=false skips the
+          // mount-time fade; the dialog appears instantly.
+          TransitionProps: { appear: false },
+        },
         styleOverrides: {
           paper: {
             backgroundImage: "none",
@@ -1282,7 +1295,10 @@ export function createAppTheme(mode: PaletteMode) {
 
       /* ── Overlay: Tooltip ── */
       MuiTooltip: {
-        defaultProps: { arrow: true, placement: "top" },
+        defaultProps: {
+          arrow: true,
+          placement: "top",
+        },
         styleOverrides: {
           tooltip: {
             backgroundColor: "var(--pd-bg-raised)",

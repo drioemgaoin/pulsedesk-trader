@@ -59,26 +59,27 @@ const MARKET_EVENT: OrderSubmittedEvent = {
 
 describe('Given a new LIMIT order event', () => {
   describe('when ProcessOrderUseCase.execute is called', () => {
-    it('should create a fill at the limit price and return created=true', async () => {
+    // market=149 ≤ limit=150 → condition immediately met → fills at market price 149 (not at limitPrice 150)
+    it('should create a fill at the market price (not limitPrice) and return created=true', async () => {
       const repo = makeRepo();
       const publisher = makePublisher();
-      const cache = makeCache();
+      const cache = makeCache(); // price=149
       const { execution, created } = await new ProcessOrderUseCase(repo, publisher, cache, makeQueue()).execute(LIMIT_EVENT);
       expect(created).toBe(true);
-      expect(execution!.fillPrice).toBe(150);
+      expect(execution!.fillPrice).toBe(149); // market price — trader gets price improvement
       expect(execution!.filledQuantity).toBe(10);
       expect(execution!.orderId).toBe('order-1');
       expect(repo.save).toHaveBeenCalledTimes(1);
     });
 
-    it('should publish the fill event', async () => {
+    it('should publish the fill event at market price', async () => {
       const repo = makeRepo();
       const publisher = makePublisher();
-      const cache = makeCache();
+      const cache = makeCache(); // price=149
       await new ProcessOrderUseCase(repo, publisher, cache, makeQueue()).execute(LIMIT_EVENT);
       expect(publisher.publishFill).toHaveBeenCalledTimes(1);
       expect(publisher.publishFill).toHaveBeenCalledWith(
-        expect.objectContaining({ orderId: 'order-1', fillPrice: 150 }),
+        expect.objectContaining({ orderId: 'order-1', fillPrice: 149 }),
       );
     });
 

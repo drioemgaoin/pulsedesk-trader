@@ -32,7 +32,7 @@ export class MatchLimitOrdersUseCase {
         symbol: order.symbol,
         side: order.side,
         filledQuantity: order.quantity,
-        fillPrice: order.limitPrice,
+        fillPrice: marketPrice,
         filledAt: new Date().toISOString(),
       });
 
