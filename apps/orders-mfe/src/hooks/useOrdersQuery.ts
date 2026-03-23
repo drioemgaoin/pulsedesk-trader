@@ -18,8 +18,8 @@ export function useOrdersQuery(page: number, filters: OrderFilters) {
       const qs = buildQueryString(accountId, page, filters, PAGE_SIZE);
       return fetchApi<OrdersPageV1>(`/api/v1/orders${qs}`, token ?? null);
     },
-    staleTime: 3_000,
-    refetchInterval: 3_000,
+    staleTime: 30_000,
+    refetchInterval: 30_000,
     placeholderData: (prev) => prev,
   });
 }

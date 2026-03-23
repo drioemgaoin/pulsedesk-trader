@@ -3,6 +3,10 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -17,6 +21,7 @@
     "@emotion/styled": "^11.13.0",
     "@mui/icons-material": "^6.4.0",
     "@mui/material": "^6.4.0",
+    "@pulsedesk/ui": "workspace:*",
     "@reduxjs/toolkit": "^2.5.0",
     "@tanstack/react-query": "^5.62.0",
     "@tanstack/react-table": "^8.21.3",

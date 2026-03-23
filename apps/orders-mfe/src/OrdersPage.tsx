@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   useReactTable,
   getCoreRowModel,
@@ -9,21 +9,14 @@ import {
 import { format } from 'date-fns';
 import {
   Alert,
-  Autocomplete,
   Badge,
   Box,
   Button,
-  Chip,
   Collapse,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
   Drawer,
   IconButton,
   Paper,
   Skeleton,
-  Snackbar,
   Stack,
   Table,
   TableBody,
@@ -32,33 +25,25 @@ import {
   TableHead,
   TablePagination,
   TableRow,
-  TextField,
-  ToggleButton,
-  ToggleButtonGroup,
   Tooltip,
   Typography,
-} from '@mui/material';
-import CancelIcon from '@mui/icons-material/Cancel';
-import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import DownloadIcon from '@mui/icons-material/Download';
-import FilterListIcon from '@mui/icons-material/FilterList';
+  DownloadIcon,
+  FilterListIcon,
+  FilterChip,
+  StatusChip,
+  tableRowSx,
+} from '@pulsedesk/ui';
 import { useOrdersQuery, PAGE_SIZE } from './hooks/useOrdersQuery';
-import { useCancelOrderMutation } from './hooks/useCancelOrderMutation';
-import { FilterPanel } from './components/FilterPanel';
-import { DEFAULT_FILTERS, hasActiveFilters, ALL_STATUSES, KNOWN_SYMBOLS } from './lib/filters';
+import { DEFAULT_FILTERS, hasActiveFilters, applyClientFilters, ALL_STATUSES } from './lib/filters';
 import { downloadOrdersCsv } from './lib/csvExport';
+import { RowDetail } from './components/RowDetail';
+import { SideFilter } from './components/SideFilter';
+import { OrderIdCell } from './components/OrderIdCell';
+import { OrderSymbolCell } from './components/OrderSymbolCell';
+import { OrderSideCell } from './components/OrderSideCell';
+import { OrderCancelCell } from './components/OrderCancelCell';
 import type { OrderFilters, OrderStatus } from './lib/filters';
 import type { OrderResponseV1 } from './api/types';
-
-// ── Status chip colours ───────────────────────────────────────────────────────
-const STATUS_COLOURS: Record<OrderStatus, 'default' | 'warning' | 'info' | 'success' | 'error'> = {
-  PENDING: 'warning',
-  ACCEPTED: 'info',
-  FILLED: 'success',
-  PARTIALLY_FILLED: 'info',
-  REJECTED: 'error',
-  CANCELLED: 'default',
-};
 
 // Count active "secondary" filters (symbols, side, dates — not status chips)
 function countSecondaryFilters(f: OrderFilters): number {
@@ -76,57 +61,21 @@ const col = createColumnHelper<OrderResponseV1>();
 const columns = [
   col.accessor('id', {
     header: 'Order ID',
-    cell: ({ getValue }) => {
-      const id = getValue();
-      const short = id.slice(0, 8) + '…';
-      return (
-        <Stack direction="row" alignItems="center" spacing={0.5}>
-          <Tooltip title={id}>
-            <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>
-              {short}
-            </Typography>
-          </Tooltip>
-          <Tooltip title="Copy">
-            <IconButton
-              size="small"
-              aria-label={`copy order id ${id}`}
-              onClick={(e) => { e.stopPropagation(); void navigator.clipboard.writeText(id); }}
-            >
-              <ContentCopyIcon sx={{ fontSize: 12 }} />
-            </IconButton>
-          </Tooltip>
-        </Stack>
-      );
-    },
+    cell: ({ getValue }) => <OrderIdCell id={getValue()} />,
   }),
   col.accessor('symbol', {
     header: 'Symbol',
-    cell: ({ getValue }) => (
-      <Typography variant="body2" sx={{ fontWeight: 600 }}>{getValue()}</Typography>
-    ),
+    cell: ({ getValue }) => <OrderSymbolCell symbol={getValue()} />,
   }),
   col.accessor('side', {
     header: 'Side',
-    cell: ({ getValue }) => {
-      const side = getValue();
-      return (
-        <Typography
-          variant="body2"
-          sx={{ fontWeight: 700, color: side === 'BUY' ? 'trading.uptick' : 'trading.downtick' }}
-        >
-          {side}
-        </Typography>
-      );
-    },
+    cell: ({ getValue }) => <OrderSideCell side={getValue()} />,
   }),
   col.accessor('type', { header: 'Type' }),
   col.accessor('quantity', { header: 'Qty', meta: { align: 'right' } }),
   col.accessor('status', {
     header: 'Status',
-    cell: ({ getValue }) => {
-      const s = getValue();
-      return <Chip label={s} size="small" color={STATUS_COLOURS[s] ?? 'default'} sx={{ fontSize: '0.625rem', height: 18, fontWeight: 700, letterSpacing: '0.03em' }} />;
-    },
+    cell: ({ getValue }) => <StatusChip status={getValue()} />,
   }),
   col.accessor('createdAt', {
     header: 'Submitted',
@@ -136,8 +85,9 @@ const columns = [
     id: 'fillTime',
     header: 'Fill Time',
     cell: ({ row }) => {
-      if (row.original.status !== 'FILLED' && row.original.status !== 'PARTIALLY_FILLED') return '—';
-      return format(new Date(row.original.updatedAt), 'dd MMM yyyy HH:mm');
+      const { status, updatedAt } = row.original;
+      if (status !== 'FILLED' && status !== 'PARTIALLY_FILLED') return '—';
+      return format(new Date(updatedAt), 'dd MMM yyyy HH:mm');
     },
   }),
   col.display({
@@ -145,92 +95,19 @@ const columns = [
     header: '',
     cell: ({ row }) => {
       const { status, id, symbol, quantity } = row.original;
-      if (status !== 'PENDING' && status !== 'ACCEPTED') return null;
-      return (
-        <Box onClick={(e) => e.stopPropagation()}>
-          <CancelButton orderId={id} symbol={symbol} quantity={quantity} />
-        </Box>
-      );
+      return <OrderCancelCell orderId={id} symbol={symbol} quantity={quantity} status={status} />;
     },
   }),
 ];
 
-// ── Cancel button with confirmation dialog ────────────────────────────────────
-function CancelButton({ orderId, symbol, quantity }: { orderId: string; symbol: string; quantity: number }) {
-  const [open, setOpen] = useState(false);
-  const [errorMsg, setErrorMsg] = useState('');
-  const mutation = useCancelOrderMutation();
 
-  function handleConfirm() {
-    setOpen(false);
-    mutation.mutate(orderId, {
-      onError: (err) => setErrorMsg(err.message || 'Failed to cancel order'),
-    });
-  }
-
-  return (
-    <>
-      <Tooltip title="Cancel order">
-        <IconButton
-          size="small"
-          aria-label={`cancel order ${orderId}`}
-          onClick={() => setOpen(true)}
-        >
-          <CancelIcon fontSize="small" color="error" />
-        </IconButton>
-      </Tooltip>
-
-      <Dialog open={open} onClose={() => setOpen(false)} maxWidth="xs">
-        <DialogTitle>Cancel Order</DialogTitle>
-        <DialogContent>
-          Cancel order for {symbol} × {quantity}?
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setOpen(false)}>Keep</Button>
-          <Button color="error" variant="contained" onClick={handleConfirm}>
-            Cancel Order
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      <Snackbar
-        open={!!errorMsg}
-        autoHideDuration={4000}
-        onClose={() => setErrorMsg('')}
-        message={errorMsg}
-      />
-    </>
-  );
-}
-
-// ── Expandable row detail ─────────────────────────────────────────────────────
-function RowDetail({ order }: { order: OrderResponseV1 }) {
-  return (
-    <Box sx={{ px: 4, py: 2, bgcolor: 'background.default', borderLeft: '3px solid', borderLeftColor: 'divider' }}>
-      <Stack direction="row" flexWrap="wrap" gap={3}>
-        <Box>
-          <Typography variant="caption" color="text.secondary">Order ID</Typography>
-          <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>{order.id}</Typography>
-        </Box>
-        <Box>
-          <Typography variant="caption" color="text.secondary">Command ID</Typography>
-          <Typography variant="body2" sx={{ fontFamily: 'monospace' }}>{order.commandId}</Typography>
-        </Box>
-        {order.limitPrice != null && (
-          <Box>
-            <Typography variant="caption" color="text.secondary">Limit Price</Typography>
-            <Typography variant="body2">${order.limitPrice.toFixed(2)}</Typography>
-          </Box>
-        )}
-        {order.rejectionReason && (
-          <Box>
-            <Typography variant="caption" color="text.secondary">Rejection Reason</Typography>
-            <Typography variant="body2" color="error.main">{order.rejectionReason}</Typography>
-          </Box>
-        )}
-      </Stack>
-    </Box>
-  );
+function useDebounce<T>(value: T, ms: number): T {
+  const [debounced, setDebounced] = useState(value);
+  useEffect(() => {
+    const id = setTimeout(() => setDebounced(value), ms);
+    return () => clearTimeout(id);
+  }, [value, ms]);
+  return debounced;
 }
 
 // ── Main page ─────────────────────────────────────────────────────────────────
@@ -239,12 +116,17 @@ export default function OrdersPage() {
   const [filters, setFilters] = useState<OrderFilters>(DEFAULT_FILTERS);
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  const { data, isLoading, isError, error } = useOrdersQuery(page, filters);
+  // Debounce filters so rapid status chip clicks don't fire concurrent requests
+  const debouncedFilters = useDebounce(filters, 300);
 
-  const orders = data?.orders ?? [];
+  const { data, isLoading, isError, error } = useOrdersQuery(page, debouncedFilters);
+
+  const rawOrders = data?.orders ?? [];
+  const orders = applyClientFilters(rawOrders, filters);
   const total = data?.pagination.total ?? 0;
   const secondaryCount = countSecondaryFilters(filters);
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const table = useReactTable({
     data: orders,
     columns,
@@ -301,19 +183,16 @@ export default function OrdersPage() {
           borderRadius: 1,
           border: 1,
           borderColor: 'divider',
-          bgcolor: 'background.paper',
+          bgcolor: 'var(--pd-bg-surface)',
         }}
       >
         {/* Status chips — primary filter, always visible */}
         {ALL_STATUSES.map((s) => (
-          <Chip
+          <FilterChip
             key={s}
-            label={s === 'PARTIALLY_FILLED' ? 'PARTIAL' : s}
-            size="small"
-            color={filters.statuses.includes(s) ? STATUS_COLOURS[s] ?? 'default' : 'default'}
-            variant={filters.statuses.includes(s) ? 'filled' : 'outlined'}
+            status={s}
+            isActive={filters.statuses.includes(s)}
             onClick={() => toggleStatus(s)}
-            aria-pressed={filters.statuses.includes(s)}
           />
         ))}
 
@@ -325,7 +204,7 @@ export default function OrdersPage() {
             size="small"
             variant="text"
             onClick={() => handleFiltersChange(DEFAULT_FILTERS)}
-            aria-label="clear filters"
+            aria-label="clear active filters"
             sx={{ minWidth: 'auto', px: 1 }}
           >
             Clear
@@ -442,20 +321,29 @@ export default function OrdersPage() {
                     </TableCell>
                   </TableRow>
                 )
-              : table.getRowModel().rows.flatMap((row) => [
+              : table.getRowModel().rows.flatMap((row, rowIndex) => [
                   <TableRow
                     key={row.id}
-                    hover
                     tabIndex={0}
                     onClick={() => row.toggleExpanded()}
                     onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); row.toggleExpanded(); } }}
                     aria-expanded={row.getIsExpanded()}
+                    aria-label="expand row"
                     sx={{
                       cursor: 'pointer',
                       outline: 'none',
-                      ...(row.original.status === 'PENDING' && {
+                      ...tableRowSx(rowIndex),
+                      ...((row.original.status === 'PENDING' || row.original.status === 'ACCEPTED') && {
                         borderLeft: '2px solid',
                         borderLeftColor: 'warning.main',
+                      }),
+                      ...(row.original.status === 'FILLED' && {
+                        borderLeft: '2px solid',
+                        borderLeftColor: 'success.main',
+                      }),
+                      ...(row.original.status === 'REJECTED' && {
+                        borderLeft: '2px solid',
+                        borderLeftColor: 'error.main',
                       }),
                     }}
                   >
@@ -509,7 +397,12 @@ export default function OrdersPage() {
       >
         <Box sx={{ p: 2, borderBottom: 1, borderColor: 'divider' }}>
           <Stack direction="row" alignItems="center" justifyContent="space-between">
-            <Typography variant="subtitle1" fontWeight={600}>More Filters</Typography>
+            <Box>
+              <Typography variant="subtitle1" fontWeight={600}>More Filters</Typography>
+              <Typography variant="caption" color="text.secondary">
+                {isLoading ? 'Loading…' : `${orders.length.toLocaleString()} ${orders.length === 1 ? 'order' : 'orders'} match`}
+              </Typography>
+            </Box>
             {secondaryCount > 0 && (
               <Button
                 size="small"
@@ -522,7 +415,6 @@ export default function OrdersPage() {
           </Stack>
         </Box>
 
-        {/* Reuse FilterPanel but hide its status section since we handle that inline */}
         <Box sx={{ p: 2 }}>
           <SideFilter filters={filters} onChange={handleFiltersChange} />
         </Box>
@@ -531,74 +423,3 @@ export default function OrdersPage() {
   );
 }
 
-// ── Side + Symbol + Date secondary filters (drawer content) ───────────────────
-function SideFilter({ filters, onChange }: { filters: OrderFilters; onChange: (f: OrderFilters) => void }) {
-  return (
-    <Stack spacing={3}>
-      <Box>
-        <Typography variant="caption" color="text.secondary" gutterBottom display="block">
-          Side
-        </Typography>
-        <ToggleButtonGroup
-          size="small"
-          exclusive
-          fullWidth
-          value={filters.side}
-          onChange={(_, v) => { if (v) onChange({ ...filters, side: v }); }}
-          aria-label="side filter"
-        >
-          <ToggleButton value="ALL">All</ToggleButton>
-          <ToggleButton value="BUY" sx={{ color: 'trading.uptick', '&:hover': { bgcolor: 'success.light', color: '#fff' }, '&:active': { bgcolor: 'success.main', color: '#fff' }, '&:hover:active': { bgcolor: 'success.dark', color: '#fff' }, '&.Mui-selected': { bgcolor: 'success.main', color: '#fff', '&:hover': { bgcolor: 'success.light' }, '&:active, &:hover:active': { bgcolor: 'success.dark' } } }}>Buy</ToggleButton>
-          <ToggleButton value="SELL" sx={{ color: 'trading.downtick', '&:hover': { bgcolor: 'error.light', color: '#fff' }, '&:active': { bgcolor: 'error.main', color: '#fff' }, '&:hover:active': { bgcolor: 'error.dark', color: '#fff' }, '&.Mui-selected': { bgcolor: 'error.main', color: '#fff', '&:hover': { bgcolor: 'error.light' }, '&:active, &:hover:active': { bgcolor: 'error.dark' } } }}>Sell</ToggleButton>
-        </ToggleButtonGroup>
-      </Box>
-
-      <Box>
-        <Typography variant="caption" color="text.secondary" gutterBottom display="block">
-          Symbol
-        </Typography>
-        <Autocomplete
-          multiple
-          size="small"
-          options={KNOWN_SYMBOLS}
-          value={filters.symbols}
-          onChange={(_, value) => onChange({ ...filters, symbols: value })}
-          renderInput={(params) => (
-            <TextField {...params} placeholder="Any symbol" inputProps={{ ...params.inputProps, 'aria-label': 'symbol filter' }} />
-          )}
-          renderTags={(value, getTagProps) =>
-            value.map((option, index) => (
-              <Chip label={option} size="small" {...getTagProps({ index })} key={option} />
-            ))
-          }
-        />
-      </Box>
-
-      <Box>
-        <Typography variant="caption" color="text.secondary" gutterBottom display="block">
-          Date Range
-        </Typography>
-        <Stack spacing={1}>
-          <TextField
-            size="small"
-            label="From"
-            type="date"
-            InputLabelProps={{ shrink: true }}
-            inputProps={{ 'aria-label': 'date from' }}
-            value={filters.dateFrom}
-            onChange={(e) => onChange({ ...filters, dateFrom: e.target.value })}
-          />
-          <TextField
-            size="small"
-            label="To"
-            type="date"
-            InputLabelProps={{ shrink: true }}
-            inputProps={{ 'aria-label': 'date to' }}
-            value={filters.dateTo}
-            onChange={(e) => onChange({ ...filters, dateTo: e.target.value })}
-          />
-        </Stack>
-      </Box>
-    </Stack>
-  );
-}

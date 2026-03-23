@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { format } from 'date-fns';
-import { Box, Button, Chip, Stack, Typography } from '@mui/material';
+import { Box, Button, Chip, Stack, Typography } from '@pulsedesk/ui';
 import type { FeedRow } from '../hooks/useSimulator';
 
 const STATUS_COLOURS: Record<FeedRow['status'], 'default' | 'warning' | 'success' | 'error' | 'info'> = {
@@ -22,6 +22,7 @@ export function LiveFeed({ rows }: LiveFeedProps) {
   const parentRef = useRef<HTMLDivElement>(null);
   const [autoScroll, setAutoScroll] = useState(true);
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const virtualizer = useVirtualizer({
     count: rows.length,
     getScrollElement: () => parentRef.current,
@@ -74,7 +75,7 @@ export function LiveFeed({ rows }: LiveFeedProps) {
           border: 1,
           borderColor: 'divider',
           borderRadius: 1,
-          bgcolor: 'background.default',
+          bgcolor: 'var(--pd-bg-canvas)',
         }}
         aria-label="live feed"
       >

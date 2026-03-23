@@ -37,12 +37,12 @@ export class OrdersController {
   @HttpCode(200)
   @ApiOperation({ summary: 'List orders by account ID with optional pagination and status filter' })
   @ApiQuery({ name: 'accountId', required: true })
-  @ApiQuery({ name: 'status', required: false, enum: OrderStatus })
+  @ApiQuery({ name: 'status', required: false, description: 'Comma-separated statuses, e.g. FILLED,REJECTED' })
   @ApiQuery({ name: 'limit', required: false, description: '1–200, default 50' })
   @ApiQuery({ name: 'offset', required: false, description: '>= 0, default 0' })
   async list(
     @Query('accountId') accountId: string,
-    @Query('status') status?: string,
+    @Query('status') statusParam?: string,
     @Query('limit') limitStr?: string,
     @Query('offset') offsetStr?: string,
   ): Promise<{ orders: OrderResponseDto[]; pagination: { limit: number; offset: number; total: number } }> {
@@ -57,10 +57,12 @@ export class OrdersController {
     if (isNaN(offset) || offset < 0) {
       throw new BadRequestException('offset must be 0 or greater');
     }
-    if (status !== undefined && !VALID_STATUSES.has(status)) {
+    const statuses = statusParam ? statusParam.split(',').map((s) => s.trim()) : [];
+    const invalid = statuses.filter((s) => !VALID_STATUSES.has(s));
+    if (invalid.length > 0) {
       throw new BadRequestException(`status must be one of: ${[...VALID_STATUSES].join(', ')}`);
     }
-    const result = await this.getOrders.execute({ accountId, status, limit, offset });
+    const result = await this.getOrders.execute({ accountId, statuses, limit, offset });
     return {
       orders: result.orders.map((o) => OrderResponseDto.fromDomain(o)),
       pagination: { limit: result.limit, offset: result.offset, total: result.total },

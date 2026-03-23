@@ -9,7 +9,8 @@ import {
   TableHead,
   TableRow,
   Tooltip,
-} from '@mui/material';
+  tableRowSx,
+} from '@pulsedesk/ui';
 import { usePositionsQuery } from '../hooks/usePositionsQuery';
 
 function fmt2(value: number): string {
@@ -102,17 +103,17 @@ export function PositionsPanel({ accountId }: PositionsPanelProps) {
             {positions !== null && positions.length === 0 && !isLoading && (
               <TableRow>
                 <TableCell colSpan={6} align="center" sx={{ py: 3, color: 'text.disabled' }}>
-                  No open positions. Executed orders will appear here.
+                  No positions. Executed orders will appear here.
                 </TableCell>
               </TableRow>
             )}
             {positions !== null &&
-              positions.map((pos) => {
+              positions.map((pos, index) => {
                 const ret = pctReturn(pos.unrealizedPnl, pos.quantity, pos.averageCost);
                 const pnlColor = pos.unrealizedPnl > 0 ? 'trading.uptick' : pos.unrealizedPnl < 0 ? 'trading.downtick' : 'text.secondary';
                 const retColor = ret !== null ? (ret > 0 ? 'trading.uptick' : ret < 0 ? 'trading.downtick' : 'text.secondary') : 'text.secondary';
                 return (
-                  <TableRow key={pos.symbol} hover>
+                  <TableRow key={pos.symbol} sx={tableRowSx(index)}>
                     <TableCell sx={{ fontWeight: 600 }}>{pos.symbol}</TableCell>
                     <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums', display: { xs: 'none', sm: 'table-cell' } }}>{pos.quantity}</TableCell>
                     <TableCell align="right" sx={{ fontVariantNumeric: 'tabular-nums', color: 'text.secondary', display: { xs: 'none', md: 'table-cell' } }}>{fmt2(pos.averageCost)}</TableCell>

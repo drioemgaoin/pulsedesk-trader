@@ -25,7 +25,7 @@
 FROM node:20-alpine AS base
 ENV PNPM_HOME="/pnpm"
 ENV PATH="$PNPM_HOME:$PATH"
-RUN corepack enable
+RUN npm install -g pnpm@10.17.1
 
 # ── Deps: install all workspace dependencies once ────────────────────────────
 FROM base AS deps
@@ -34,6 +34,7 @@ WORKDIR /workspace
 # Copy manifests only — layer cache invalidated only when deps change
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
 COPY packages/contracts/package.json          ./packages/contracts/package.json
+COPY packages/ui/package.json                 ./packages/ui/package.json
 COPY apps/trader-ui/package.json              ./apps/trader-ui/package.json
 COPY apps/trading-mfe/package.json            ./apps/trading-mfe/package.json
 COPY apps/portfolio-mfe/package.json          ./apps/portfolio-mfe/package.json
@@ -52,6 +53,7 @@ RUN pnpm install --frozen-lockfile
 
 # Copy full source after deps are cached
 COPY packages/contracts/ ./packages/contracts/
+COPY packages/ui/        ./packages/ui/
 COPY apps/trader-ui/     ./apps/trader-ui/
 COPY apps/trading-mfe/   ./apps/trading-mfe/
 COPY apps/portfolio-mfe/ ./apps/portfolio-mfe/

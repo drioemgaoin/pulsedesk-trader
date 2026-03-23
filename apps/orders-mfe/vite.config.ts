@@ -4,6 +4,7 @@ import react from '@vitejs/plugin-react';
 import federation from '@originjs/vite-plugin-federation';
 
 const shared = {
+  '@pulsedesk/ui': { singleton: true, requiredVersion: '^0.1.0' },
   react: { singleton: true, requiredVersion: '^19.0.0' },
   'react-dom': { singleton: true, requiredVersion: '^19.0.0' },
   'react-router-dom': { singleton: true, requiredVersion: '^7.0.0' },

@@ -21,8 +21,8 @@ import {
   ToggleButton,
   ToggleButtonGroup,
   Typography,
-} from '@mui/material';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+  ExpandMoreIcon,
+} from '@pulsedesk/ui';
 import type { TrafficProfile, ProfileConfig } from '../lib/generators';
 import type { ScenarioType } from '../lib/scenarios';
 import type { SimulatorStatus } from '../hooks/useSimulator';
@@ -91,6 +91,7 @@ export function ConfigPanel({
     },
   });
 
+  // eslint-disable-next-line react-hooks/incompatible-library
   const profile = watch('profile');
   const steadyRate = Number(watch('steadyRate'));
   const ratePerMin = profile === 'Steady' ? steadyRate * 60 : 0;
@@ -439,7 +440,7 @@ export function ConfigPanel({
             py: 2,
             borderTop: 1,
             borderColor: 'divider',
-            bgcolor: 'background.paper',
+            bgcolor: 'var(--pd-bg-surface)',
             flexShrink: 0,
           }}
         >

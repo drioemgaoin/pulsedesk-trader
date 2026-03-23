@@ -2,7 +2,7 @@ import React from 'react';
 import { render } from '@testing-library/react';
 import { configureStore } from '@reduxjs/toolkit';
 import { Provider } from 'react-redux';
-import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { ThemeProvider, createTheme } from '@pulsedesk/ui';
 
 const theme = createTheme({ palette: { mode: 'dark' } });
 

@@ -2,6 +2,7 @@ import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nest
 import { Consumer, Kafka } from 'kafkajs';
 import { MarketTickEvent } from '@pulsedesk/contracts';
 import { IMarketPriceCache, MARKET_PRICE_CACHE } from '../../domain/ports/market-price-cache.port';
+import { MatchLimitOrdersUseCase } from '../../application/use-cases/match-limit-orders.use-case';
 
 @Injectable()
 export class KafkaMarketTickConsumer implements OnModuleInit, OnModuleDestroy {
@@ -9,7 +10,10 @@ export class KafkaMarketTickConsumer implements OnModuleInit, OnModuleDestroy {
   private readonly consumer: Consumer;
   private readonly topic: string;
 
-  constructor(@Inject(MARKET_PRICE_CACHE) private readonly priceCache: IMarketPriceCache) {
+  constructor(
+    @Inject(MARKET_PRICE_CACHE) private readonly priceCache: IMarketPriceCache,
+    private readonly matchLimitOrders: MatchLimitOrdersUseCase,
+  ) {
     const broker = process.env['KAFKA_BROKER'] ?? 'localhost:9092';
     const clientId = process.env['KAFKA_CLIENT_ID'] ?? 'execution-service';
     const groupId = process.env['KAFKA_CONSUMER_GROUP_MARKET_PRICES'] ?? 'execution-market-prices';
@@ -30,6 +34,7 @@ export class KafkaMarketTickConsumer implements OnModuleInit, OnModuleDestroy {
         try {
           const tick = JSON.parse(message.value.toString()) as MarketTickEvent;
           this.priceCache.setPrice(tick.symbol, tick.last);
+          await this.matchLimitOrders.execute(tick.symbol, tick.last);
         } catch {
           // malformed tick — skip silently; price cache not updated
         }

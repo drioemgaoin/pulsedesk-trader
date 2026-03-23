@@ -1,4 +1,4 @@
-import { Box, Card, CardContent, LinearProgress, Paper, Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography, useTheme } from '@mui/material';
+import { Box, Card, CardContent, LinearProgress, Paper, Stack, Table, TableBody, TableCell, TableHead, TableRow, Typography, useTheme } from '@pulsedesk/ui';
 import { acceptanceRate, avgFillLatency, fillRate, rejectionRate } from '../lib/stats';
 import type { SimulatorStats } from '../lib/stats';
 

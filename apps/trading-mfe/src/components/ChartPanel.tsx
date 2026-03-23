@@ -7,8 +7,13 @@ import {
   type ISeriesApi,
   type Time,
 } from "lightweight-charts";
-import { Box, Chip, Typography, useTheme } from "@mui/material";
-import FiberManualRecordIcon from "@mui/icons-material/FiberManualRecord";
+import {
+  Box,
+  Typography,
+  useTheme,
+  LiveBadge,
+  PulsingChip,
+} from "@pulsedesk/ui";
 import type { MarketTick, WsStatus } from "../hooks/useMarketStream";
 
 interface ChartPanelProps {
@@ -18,9 +23,26 @@ interface ChartPanelProps {
 }
 
 const MAX_POINTS = 300;
+type SeriesPoint = { time: number; value: number };
 
 function toUnixSeconds(iso: string): number {
   return Math.floor(new Date(iso).getTime() / 1000);
+}
+
+function buildSeedPoints(tick: MarketTick): SeriesPoint[] {
+  if (!Array.isArray(tick.history) || tick.history.length < 2) return [];
+
+  const seeded: SeriesPoint[] = [];
+  const history = tick.history.slice(-MAX_POINTS);
+
+  for (const point of history) {
+    const t = toUnixSeconds(point.timestamp);
+    const prev = seeded[seeded.length - 1];
+    const nextTime = prev && t <= prev.time ? prev.time + 1 : t;
+    seeded.push({ time: nextTime, value: point.last });
+  }
+
+  return seeded;
 }
 
 export function ChartPanel({ symbol, tick, streamStatus }: ChartPanelProps) {
@@ -28,7 +50,7 @@ export function ChartPanel({ symbol, tick, streamStatus }: ChartPanelProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Line", Time> | null>(null);
-  const pointsRef = useRef<{ time: number; value: number }[]>([]);
+  const pointsRef = useRef<SeriesPoint[]>([]);
   const [prices, setPrices] = useState<{
     last: number | null;
     prev: number | null;
@@ -41,35 +63,41 @@ export function ChartPanel({ symbol, tick, streamStatus }: ChartPanelProps) {
   useEffect(() => {
     if (!containerRef.current || !symbol) return;
 
-    const bg = theme.palette.background.default;
-    const grid = theme.palette.divider;
-    const txt = theme.palette.text.secondary;
+    const chartBg = theme.palette.background.default;
+    const chartGrid = theme.palette.divider;
+    const chartText = theme.palette.text.secondary;
     const line = theme.palette.primary.main;
 
     const chart = createChart(containerRef.current, {
+      autoSize: true,
       layout: {
-        background: { type: ColorType.Solid, color: bg },
-        textColor: txt,
+        background: { type: ColorType.Solid, color: chartBg },
+        textColor: chartText,
+        attributionLogo: false,
       },
-      grid: { vertLines: { color: grid }, horzLines: { color: grid } },
+      grid: {
+        vertLines: { color: chartGrid },
+        horzLines: { color: chartGrid },
+      },
       crosshair: {
         vertLine: {
           color: theme.palette.text.disabled,
-          labelBackgroundColor: theme.palette.background.paper,
+          labelBackgroundColor: chartBg,
         },
         horzLine: {
           color: theme.palette.text.disabled,
-          labelBackgroundColor: theme.palette.background.paper,
+          labelBackgroundColor: chartBg,
         },
       },
       timeScale: {
-        borderColor: grid,
+        borderColor: chartGrid,
         timeVisible: true,
         secondsVisible: false,
       },
-      rightPriceScale: { borderColor: grid },
-      width: containerRef.current.clientWidth,
-      height: containerRef.current.clientHeight,
+      rightPriceScale: {
+        borderColor: chartGrid,
+        scaleMargins: { top: 0.15, bottom: 0.2 },
+      },
     });
 
     const series = chart.addSeries(LineSeries, {
@@ -85,18 +113,7 @@ export function ChartPanel({ symbol, tick, streamStatus }: ChartPanelProps) {
     pointsRef.current = [];
     queueMicrotask(() => setPrices({ last: null, prev: null }));
 
-    const ro = new ResizeObserver(() => {
-      if (containerRef.current) {
-        chart.applyOptions({
-          width: containerRef.current.clientWidth,
-          height: containerRef.current.clientHeight,
-        });
-      }
-    });
-    ro.observe(containerRef.current);
-
     return () => {
-      ro.disconnect();
       chart.remove();
       chartRef.current = null;
       seriesRef.current = null;
@@ -107,11 +124,30 @@ export function ChartPanel({ symbol, tick, streamStatus }: ChartPanelProps) {
   useEffect(() => {
     if (!tick || !seriesRef.current || tick.symbol !== symbol) return;
 
-    const t = toUnixSeconds(tick.timestamp);
     const points = pointsRef.current;
+
+    // Storybook/static mode can provide a full history to render a complete curve immediately.
+    if (points.length === 0) {
+      const seeded = buildSeedPoints(tick);
+      if (seeded.length > 1) {
+        pointsRef.current = seeded;
+        seriesRef.current.setData(
+          seeded as Parameters<typeof seriesRef.current.setData>[0],
+        );
+        chartRef.current?.timeScale().fitContent();
+        const last = seeded[seeded.length - 1]!.value;
+        const prev = seeded[seeded.length - 2]!.value;
+        queueMicrotask(() => setPrices({ prev, last }));
+        return;
+      }
+    }
+
+    const t = toUnixSeconds(tick.timestamp);
     const prev = points[points.length - 1];
     const nextTime = prev && t <= prev.time ? prev.time + 1 : t;
     const point = { time: nextTime, value: tick.last };
+
+    if (prev && prev.time === point.time && prev.value === point.value) return;
 
     if (points.length >= MAX_POINTS) points.shift();
     points.push(point);
@@ -122,7 +158,7 @@ export function ChartPanel({ symbol, tick, streamStatus }: ChartPanelProps) {
     queueMicrotask(() =>
       setPrices((p) => ({ prev: p.last ?? tick.last, last: tick.last })),
     );
-  }, [tick, symbol]);
+  }, [tick, symbol, theme.palette.mode]);
 
   const { last: lastPrice, prev: prevPrice } = prices;
   const priceDir =
@@ -158,7 +194,7 @@ export function ChartPanel({ symbol, tick, streamStatus }: ChartPanelProps) {
           justifyContent: "center",
           height: "100%",
           gap: 1,
-          bgcolor: "background.default",
+          bgcolor: "var(--pd-bg-canvas)",
         }}
       >
         <Typography variant="body2" color="text.disabled">
@@ -175,25 +211,40 @@ export function ChartPanel({ symbol, tick, streamStatus }: ChartPanelProps) {
       sx={{
         position: "relative",
         height: "100%",
-        bgcolor: "background.default",
+        bgcolor: "var(--pd-bg-canvas)",
       }}
     >
       <div
         ref={containerRef}
-        style={{ width: "100%", height: "100%" }}
+        style={{
+          width: "100%",
+          height: "100%",
+          backgroundColor: theme.palette.background.default,
+        }}
         aria-hidden="true"
       />
 
       {/* Symbol + delta + live status — top-left context anchor */}
-      <Box sx={{ position: 'absolute', top: 12, left: 12, zIndex: 2, pointerEvents: 'none', display: 'flex', alignItems: 'center', gap: 1.5 }}>
+      <Box
+        sx={{
+          position: "absolute",
+          top: 12,
+          left: 12,
+          zIndex: 2,
+          pointerEvents: "none",
+          display: "flex",
+          alignItems: "center",
+          gap: 1.5,
+        }}
+      >
         <Typography
           sx={{
-            fontSize: '1rem',
+            fontSize: "1rem",
             fontWeight: 800,
-            letterSpacing: '0.02em',
-            color: 'text.primary',
+            letterSpacing: "0.02em",
+            color: "text.primary",
             lineHeight: 1,
-            bgcolor: 'background.default',
+            bgcolor: "var(--pd-bg-canvas)",
             px: 1,
             py: 0.5,
             borderRadius: 0.5,
@@ -205,12 +256,12 @@ export function ChartPanel({ symbol, tick, streamStatus }: ChartPanelProps) {
         {priceDelta !== null && (
           <Typography
             sx={{
-              fontSize: '0.875rem',
+              fontSize: "0.875rem",
               fontWeight: 700,
               color: priceColor,
-              fontVariantNumeric: 'tabular-nums',
-              transition: 'color 0.4s',
-              bgcolor: 'background.default',
+              fontVariantNumeric: "tabular-nums",
+              transition: "color 0.4s",
+              bgcolor: "var(--pd-bg-canvas)",
               px: 1,
               py: 0.5,
               borderRadius: 0.5,
@@ -218,45 +269,14 @@ export function ChartPanel({ symbol, tick, streamStatus }: ChartPanelProps) {
               lineHeight: 1,
             }}
           >
-            {priceDelta >= 0 ? '+' : ''}{priceDelta.toFixed(3)}%
+            {priceDelta >= 0 ? "+" : ""}
+            {priceDelta.toFixed(3)}%
           </Typography>
         )}
         {/* LIVE badge — only when connected and receiving data */}
-        {streamStatus === 'connected' && lastPrice !== null && (
-          <Box
-            sx={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 0.5,
-              bgcolor: 'background.default',
-              px: 1,
-              py: 0.5,
-              borderRadius: 0.5,
-              opacity: 0.92,
-            }}
-          >
-            <FiberManualRecordIcon
-              sx={{
-                fontSize: 7,
-                color: 'success.main',
-                animation: 'livePulse 2s ease-in-out infinite',
-                '@keyframes livePulse': {
-                  '0%, 100%': { opacity: 1 },
-                  '50%': { opacity: 0.4 },
-                },
-              }}
-            />
-            <Typography
-              sx={{
-                fontSize: '0.625rem',
-                fontWeight: 700,
-                letterSpacing: '0.08em',
-                color: 'success.main',
-                lineHeight: 1,
-              }}
-            >
-              LIVE
-            </Typography>
+        {streamStatus === "connected" && lastPrice !== null && (
+          <Box sx={{ bgcolor: "var(--pd-bg-canvas)", px: 1, py: 0.5, borderRadius: 0.5, opacity: 0.92 }}>
+            <LiveBadge />
           </Box>
         )}
       </Box>
@@ -283,22 +303,7 @@ export function ChartPanel({ symbol, tick, streamStatus }: ChartPanelProps) {
       {/* STALE badge — top-right */}
       {isStale && (
         <Box sx={{ position: "absolute", top: 8, right: 10, zIndex: 2 }}>
-          <Chip
-            label="STALE"
-            size="small"
-            color="warning"
-            sx={{
-              fontSize: "0.625rem",
-              height: 18,
-              fontWeight: 700,
-              letterSpacing: "0.06em",
-              animation: "pulse 1.5s ease-in-out infinite",
-              "@keyframes pulse": {
-                "0%, 100%": { opacity: 1 },
-                "50%": { opacity: 0.45 },
-              },
-            }}
-          />
+          <PulsingChip label="STALE" color="warning" />
         </Box>
       )}
 

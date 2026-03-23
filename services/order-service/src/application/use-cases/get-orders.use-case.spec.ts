@@ -39,7 +39,7 @@ describe('Given a GetOrdersUseCase instance', () => {
       expect(result.limit).toBe(50);
       expect(result.offset).toBe(0);
       expect(repo.findAllByAccount).toHaveBeenCalledWith('acc-001', {
-        status: undefined,
+        statuses: undefined,
         limit: 50,
         offset: 0,
       });
@@ -57,7 +57,7 @@ describe('Given a GetOrdersUseCase instance', () => {
       expect(result.offset).toBe(20);
       expect(result.total).toBe(100);
       expect(repo.findAllByAccount).toHaveBeenCalledWith('acc-001', {
-        status: undefined,
+        statuses: undefined,
         limit: 10,
         offset: 20,
       });
@@ -65,14 +65,14 @@ describe('Given a GetOrdersUseCase instance', () => {
   });
 
   describe('when execute is called with a status filter', () => {
-    it('should pass status to the repository', async () => {
+    it('should pass statuses to the repository', async () => {
       const repo = makeRepo([makeOrder('order-3')]);
       const useCase = new GetOrdersUseCase(repo);
 
-      await useCase.execute({ accountId: 'acc-001', status: 'FILLED' });
+      await useCase.execute({ accountId: 'acc-001', statuses: ['FILLED'] });
 
       expect(repo.findAllByAccount).toHaveBeenCalledWith('acc-001', {
-        status: 'FILLED',
+        statuses: ['FILLED'],
         limit: 50,
         offset: 0,
       });

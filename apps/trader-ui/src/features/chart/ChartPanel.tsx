@@ -21,6 +21,10 @@ export function ChartPanel({ symbol, tick, streamStatus }: ChartPanelProps) {
   const seriesRef = useRef<ISeriesApi<'Line', Time> | null>(null);
   const pointsRef = useRef<{ time: number; value: number }[]>([]);
   const [prices, setPrices] = useState<{ last: number | null; prev: number | null }>({ last: null, prev: null });
+  const chartBg = '#FFFFFF';
+  const chartGrid = 'rgba(15, 23, 42, 0.10)';
+  const chartText = '#6B7280';
+  const chartBorder = 'rgba(15, 23, 42, 0.18)';
 
   // Create / destroy chart when symbol changes
   useEffect(() => {
@@ -28,16 +32,19 @@ export function ChartPanel({ symbol, tick, streamStatus }: ChartPanelProps) {
 
     const chart = createChart(containerRef.current, {
       layout: {
-        background: { type: ColorType.Solid, color: '#18181b' },
-        textColor: '#a1a1aa',
+        background: { type: ColorType.Solid, color: chartBg },
+        textColor: chartText,
       },
       grid: {
-        vertLines: { color: '#27272a' },
-        horzLines: { color: '#27272a' },
+        vertLines: { color: chartGrid },
+        horzLines: { color: chartGrid },
       },
-      crosshair: { vertLine: { color: '#52525b' }, horzLine: { color: '#52525b' } },
-      timeScale: { borderColor: '#3f3f46', timeVisible: true, secondsVisible: false },
-      rightPriceScale: { borderColor: '#3f3f46' },
+      crosshair: {
+        vertLine: { color: '#94A3B8', labelBackgroundColor: chartBg },
+        horzLine: { color: '#94A3B8', labelBackgroundColor: chartBg },
+      },
+      timeScale: { borderColor: chartBorder, timeVisible: true, secondsVisible: false },
+      rightPriceScale: { borderColor: chartBorder },
       width: containerRef.current.clientWidth,
       height: containerRef.current.clientHeight,
     });

@@ -1,5 +1,6 @@
 import { KafkaMarketTickConsumer } from './kafka-market-tick-consumer';
 import { IMarketPriceCache } from '../../domain/ports/market-price-cache.port';
+import { MatchLimitOrdersUseCase } from '../../application/use-cases/match-limit-orders.use-case';
 
 let capturedEachMessage: ((ctx: unknown) => Promise<void>) | null = null;
 const mockConnect = jest.fn().mockResolvedValue(undefined);
@@ -22,6 +23,9 @@ const makeCache = (): jest.Mocked<IMarketPriceCache> => ({
   setPrice: jest.fn(),
 });
 
+const makeMatchLimitOrders = () =>
+  ({ execute: jest.fn().mockResolvedValue(undefined) } as unknown as jest.Mocked<MatchLimitOrdersUseCase>);
+
 const makeCtx = (value: string | null) => ({
   message: { value: value ? Buffer.from(value) : null },
 });
@@ -34,7 +38,7 @@ describe('Given a KafkaMarketTickConsumer instance', () => {
 
   describe('when onModuleInit is called', () => {
     it('should connect and subscribe to the market ticks topic', async () => {
-      const consumer = new KafkaMarketTickConsumer(makeCache());
+      const consumer = new KafkaMarketTickConsumer(makeCache(), makeMatchLimitOrders());
       await consumer.onModuleInit();
       expect(mockConnect).toHaveBeenCalledTimes(1);
       expect(mockSubscribe).toHaveBeenCalledWith(expect.objectContaining({ topic: 'market.ticks.v1' }));
@@ -43,7 +47,7 @@ describe('Given a KafkaMarketTickConsumer instance', () => {
 
   describe('when onModuleDestroy is called', () => {
     it('should disconnect the consumer', async () => {
-      const consumer = new KafkaMarketTickConsumer(makeCache());
+      const consumer = new KafkaMarketTickConsumer(makeCache(), makeMatchLimitOrders());
       await consumer.onModuleDestroy();
       expect(mockDisconnect).toHaveBeenCalledTimes(1);
     });
@@ -52,18 +56,27 @@ describe('Given a KafkaMarketTickConsumer instance', () => {
   describe('when a valid MarketTickEvent is received', () => {
     it('should update the price cache with the last price', async () => {
       const cache = makeCache();
-      const consumer = new KafkaMarketTickConsumer(cache);
+      const consumer = new KafkaMarketTickConsumer(cache, makeMatchLimitOrders());
       await consumer.onModuleInit();
       const tick = { eventType: 'market.tick', schemaVersion: 1, symbol: 'AAPL', bid: 149, ask: 151, last: 150, volume: 1000, timestamp: '2026-03-10T00:00:00.000Z' };
       await capturedEachMessage!(makeCtx(JSON.stringify(tick)));
       expect(cache.setPrice).toHaveBeenCalledWith('AAPL', 150);
+    });
+
+    it('should trigger limit order matching for the symbol', async () => {
+      const matchLimitOrders = makeMatchLimitOrders();
+      const consumer = new KafkaMarketTickConsumer(makeCache(), matchLimitOrders);
+      await consumer.onModuleInit();
+      const tick = { eventType: 'market.tick', schemaVersion: 1, symbol: 'AAPL', bid: 149, ask: 151, last: 150, volume: 1000, timestamp: '2026-03-10T00:00:00.000Z' };
+      await capturedEachMessage!(makeCtx(JSON.stringify(tick)));
+      expect(matchLimitOrders.execute).toHaveBeenCalledWith('AAPL', 150);
     });
   });
 
   describe('when a message with null value is received', () => {
     it('should not update the cache', async () => {
       const cache = makeCache();
-      const consumer = new KafkaMarketTickConsumer(cache);
+      const consumer = new KafkaMarketTickConsumer(cache, makeMatchLimitOrders());
       await consumer.onModuleInit();
       await capturedEachMessage!(makeCtx(null));
       expect(cache.setPrice).not.toHaveBeenCalled();
@@ -73,7 +86,7 @@ describe('Given a KafkaMarketTickConsumer instance', () => {
   describe('when a malformed message is received', () => {
     it('should skip silently without updating the cache', async () => {
       const cache = makeCache();
-      const consumer = new KafkaMarketTickConsumer(cache);
+      const consumer = new KafkaMarketTickConsumer(cache, makeMatchLimitOrders());
       await consumer.onModuleInit();
       await capturedEachMessage!(makeCtx('not-json'));
       expect(cache.setPrice).not.toHaveBeenCalled();

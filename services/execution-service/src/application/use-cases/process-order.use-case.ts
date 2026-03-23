@@ -8,6 +8,7 @@ import { NoMarketPriceError } from '../../domain/errors/no-market-price.error';
 import { IExecutionRepository, EXECUTION_REPOSITORY } from '../../domain/ports/execution-repository.port';
 import { IFillEventPublisher, FILL_EVENT_PUBLISHER } from '../../domain/ports/fill-event-publisher.port';
 import { IMarketPriceCache, MARKET_PRICE_CACHE } from '../../domain/ports/market-price-cache.port';
+import { ILimitOrderQueue, LIMIT_ORDER_QUEUE } from '../../domain/ports/limit-order-queue.port';
 
 @Injectable()
 export class ProcessOrderUseCase {
@@ -17,13 +18,40 @@ export class ProcessOrderUseCase {
     @Inject(EXECUTION_REPOSITORY) private readonly repo: IExecutionRepository,
     @Inject(FILL_EVENT_PUBLISHER) private readonly publisher: IFillEventPublisher,
     @Inject(MARKET_PRICE_CACHE) private readonly priceCache: IMarketPriceCache,
+    @Inject(LIMIT_ORDER_QUEUE) private readonly limitOrderQueue: ILimitOrderQueue,
   ) {}
 
-  async execute(event: OrderSubmittedEvent): Promise<{ execution: Execution; created: boolean }> {
+  async execute(event: OrderSubmittedEvent): Promise<{ execution: Execution | null; created: boolean }> {
     const existing = await this.repo.findByIdempotencyKey(event.orderId);
     if (existing) {
       this.logger.log({ idempotencyKey: event.orderId }, 'duplicate order event skipped');
       return { execution: existing, created: false };
+    }
+
+    // Limit order: check whether the market price already satisfies the condition.
+    // If not, park the order in the queue — it will be matched when a market tick
+    // brings the price to or through the limit.
+    if (event.type === OrderType.LIMIT) {
+      const marketPrice = this.priceCache.getPrice(event.symbol);
+      const conditionMet =
+        marketPrice !== null &&
+        this.isLimitConditionMet(event.side as OrderSide, marketPrice, event.limitPrice!);
+
+      if (!conditionMet) {
+        this.limitOrderQueue.add({
+          orderId: event.orderId,
+          accountId: event.accountId,
+          symbol: event.symbol,
+          side: event.side as OrderSide,
+          quantity: event.quantity,
+          limitPrice: event.limitPrice!,
+        });
+        this.logger.log(
+          { orderId: event.orderId, symbol: event.symbol, side: event.side, limitPrice: event.limitPrice, marketPrice },
+          'limit order queued — price condition not yet met',
+        );
+        return { execution: null, created: false };
+      }
     }
 
     const fillPrice = this.deriveFillPrice(event);
@@ -67,13 +95,15 @@ export class ProcessOrderUseCase {
   }
 
   private deriveFillPrice(event: OrderSubmittedEvent): number {
-    if (event.type === OrderType.LIMIT) {
-      return event.limitPrice!;
-    }
     const price = this.priceCache.getPrice(event.symbol);
     if (price === null) {
       throw new NoMarketPriceError(event.symbol);
     }
     return price;
+  }
+
+  private isLimitConditionMet(side: OrderSide, marketPrice: number, limitPrice: number): boolean {
+    if (side === OrderSide.BUY) return marketPrice <= limitPrice;
+    return marketPrice >= limitPrice;
   }
 }

@@ -3,6 +3,10 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "main": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
@@ -12,6 +16,7 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@pulsedesk/ui": "workspace:*",
     "@emotion/react": "^11.13.0",
     "@emotion/styled": "^11.13.0",
     "@fontsource/inter": "^5.1.0",
@@ -28,6 +33,7 @@
     "react-hook-form": "^7.54.0",
     "react-redux": "^9.2.0",
     "react-router-dom": "^7.1.0",
+    "react-transition-group": "^4.4.5",
     "rxjs": "^7.8.2",
     "zod": "^4.3.6"
   },
@@ -41,6 +47,7 @@
     "@types/node": "^24.10.1",
     "@types/react": "^19.2.7",
     "@types/react-dom": "^19.2.3",
+    "@types/react-transition-group": "^4.4.12",
     "@vitejs/plugin-react": "^5.1.1",
     "@vitest/coverage-v8": "^4.0.18",
     "eslint": "^9.39.1",
