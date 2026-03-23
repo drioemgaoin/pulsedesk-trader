@@ -3,6 +3,7 @@ import type { Preview, Decorator } from '@storybook/react';
 import { DocsContainer } from '@storybook/blocks';
 import { create as sbTheme } from '@storybook/theming/create';
 import { initialize, mswLoader } from 'msw-storybook-addon';
+import { Transition } from 'react-transition-group';
 import { ThemeProvider, CssBaseline, createAppTheme } from '@pulsedesk/ui';
 import { withProviders } from '../src/decorators/withProviders';
 import { defaultHandlers } from '../src/fixtures/handlers';
@@ -12,6 +13,34 @@ import '@fontsource/inter/500.css';
 import '@fontsource/inter/600.css';
 import '@fontsource/inter/700.css';
 import '@fontsource/jetbrains-mono/400.css';
+
+// ── React 19 + react-transition-group v4 compatibility patch ─────────────────
+// Storybook docs mode wraps each story canvas in a React Activity component.
+// When a story scrolls into view, Activity fires reappearLayoutEffects, which
+// calls componentDidMount() again on all class components. Transition stores
+// appearStatus = ENTERING in its constructor when in=true + appear=true. When
+// componentDidMount re-fires during reappear, it calls onEnter(nodeRef.current),
+// but nodeRef.current is null (cleared by disappearLayoutEffects), causing:
+//   TypeError: Cannot read properties of null (reading 'scrollTop')
+//
+// Fix: if nodeRef is provided and .current is null when componentDidMount fires,
+// clear appearStatus so updateStatus(true, null) becomes a no-op, preventing the
+// enter animation attempt. On normal first mount the ref is always set, so this
+// guard only fires during the Activity reappear cycle.
+{
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const proto = Transition.prototype as any;
+  const original: () => void = proto.componentDidMount;
+  proto.componentDidMount = function (this: {
+    props: { nodeRef?: { current: unknown } | null };
+    appearStatus: unknown;
+  }) {
+    if (this.props.nodeRef != null && this.props.nodeRef.current == null) {
+      this.appearStatus = null;
+    }
+    original.call(this);
+  };
+}
 
 // Pass defaultHandlers as *initial* handlers to setupWorker().
 // Initial handlers survive worker.resetHandlers() — only override handlers (added via worker.use())
