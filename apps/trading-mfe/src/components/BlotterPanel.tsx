@@ -83,7 +83,6 @@ export function BlotterPanel({
   );
 
   const allOrders = page?.orders ?? [];
-  const total = page?.pagination.total ?? 0;
 
   // "Open" = PENDING (risk not yet checked) + ACCEPTED (risk-approved, awaiting fill)
   const openOrders = allOrders.filter(
