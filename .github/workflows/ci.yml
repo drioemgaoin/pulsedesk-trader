@@ -119,11 +119,13 @@ jobs:
 
       - name: Build MFE remotes (parallel)
         run: |
-          pnpm --filter @pulsedesk/trading-mfe build &
-          pnpm --filter @pulsedesk/portfolio-mfe build &
-          pnpm --filter @pulsedesk/orders-mfe build &
-          pnpm --filter @pulsedesk/simulator-mfe build &
-          wait
+          set -e
+          pids=()
+          pnpm --filter @pulsedesk/trading-mfe build & pids+=($!)
+          pnpm --filter @pulsedesk/portfolio-mfe build & pids+=($!)
+          pnpm --filter @pulsedesk/orders-mfe build & pids+=($!)
+          pnpm --filter @pulsedesk/simulator-mfe build & pids+=($!)
+          for pid in "${pids[@]}"; do wait "$pid" || exit 1; done
         env:
           # CI build uses localhost defaults; Docker Compose overrides for the actual stack
           VITE_API_BASE_URL: http://localhost:3000
